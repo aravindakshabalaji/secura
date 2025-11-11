@@ -1,9 +1,9 @@
-
 import os
 import sqlite3
 from pathlib import Path
 
 DEFAULT_DB_NAME = "secura.sqlite3"
+
 
 def _db_path() -> str:
     base = os.getenv("FLET_APP_STORAGE_DATA")
@@ -11,6 +11,7 @@ def _db_path() -> str:
         base = os.path.join(os.getcwd(), "storage")
     Path(base).mkdir(parents=True, exist_ok=True)
     return os.path.join(base, DEFAULT_DB_NAME)
+
 
 def connect_db():
     path = _db_path()

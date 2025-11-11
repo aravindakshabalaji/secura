@@ -1,9 +1,9 @@
-
 import flet as ft
-from ui.home import HomePage
-from ui.crypto_suite import CryptoSuite
+
 from ui.crypto_encrypt_decrypt import CryptoEncryptDecrypt
 from ui.crypto_keys import CryptoKeys
+from ui.crypto_suite import CryptoSuite
+from ui.home import HomePage
 
 ROUTES = {
     "/": HomePage,
@@ -13,11 +13,12 @@ ROUTES = {
     "/crypto/keys": CryptoKeys,
 }
 
+
 def resolve_route(page: ft.Page, route: str) -> ft.View:
     cls = ROUTES.get(route)
     if cls:
         return cls(page).view()
-    
+
     return ft.View(
         route="/404",
         controls=[

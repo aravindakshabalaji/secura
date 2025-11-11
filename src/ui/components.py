@@ -10,7 +10,9 @@ def button_style() -> ft.ButtonStyle:
     )
 
 
-def PrimaryButton(page: ft.Page, text: str, icon=None, on_click=None) -> ft.FilledButton:
+def PrimaryButton(
+    page: ft.Page, text: str, icon=None, on_click=None
+) -> ft.FilledButton:
     def click_event(e):
         page.hf.heavy_impact()
         on_click(e)
@@ -18,7 +20,9 @@ def PrimaryButton(page: ft.Page, text: str, icon=None, on_click=None) -> ft.Fill
     return ft.FilledButton(text, icon=icon, style=button_style(), on_click=click_event)
 
 
-def TonalButton(page: ft.Page, text: str, icon=None, on_click=None) -> ft.FilledTonalButton:
+def TonalButton(
+    page: ft.Page, text: str, icon=None, on_click=None
+) -> ft.FilledTonalButton:
     def click_event(e):
         page.hf.heavy_impact()
         on_click(e)
@@ -28,7 +32,9 @@ def TonalButton(page: ft.Page, text: str, icon=None, on_click=None) -> ft.Filled
     )
 
 
-def DangerButton(page: ft.Page, text: str, icon=None, on_click=None) -> ft.ElevatedButton:
+def DangerButton(
+    page: ft.Page, text: str, icon=None, on_click=None
+) -> ft.ElevatedButton:
     def click_event(e):
         page.hf.heavy_impact()
         on_click(e)

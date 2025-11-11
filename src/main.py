@@ -6,7 +6,6 @@ from ui.theme import APP_TITLE, PADDING_APP, build_theme
 
 
 def main(page: ft.Page):
-
     page.title = APP_TITLE
     page.theme_mode = ft.ThemeMode.SYSTEM
     page.theme = build_theme()

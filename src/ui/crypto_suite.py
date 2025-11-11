@@ -1,7 +1,7 @@
-
 import flet as ft
-from .components import PrimaryButton
-from .theme import section_title, surface_card, GAP_MD, PADDING_APP
+
+from .theme import GAP_MD, PADDING_APP
+
 
 class CryptoSuite:
     def __init__(self, page: ft.Page):
@@ -10,7 +10,12 @@ class CryptoSuite:
 
     def feature_box(self, title: str, on_click=None):
         return ft.Container(
-            content=ft.Text(title, size=16, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
+            content=ft.Text(
+                title,
+                size=16,
+                weight=ft.FontWeight.BOLD,
+                text_align=ft.TextAlign.CENTER,
+            ),
             expand=True,
             height=120,
             bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
@@ -25,7 +30,9 @@ class CryptoSuite:
     def view(self) -> ft.View:
         header = ft.Row(
             [
-                ft.IconButton(ft.Icons.ARROW_BACK, on_click=lambda _: self.page.go("/")),
+                ft.IconButton(
+                    ft.Icons.ARROW_BACK, on_click=lambda _: self.page.go("/")
+                ),
                 ft.Text("🔐 Cryptographic Suite", size=26, weight=ft.FontWeight.BOLD),
             ],
             alignment=ft.MainAxisAlignment.START,
@@ -33,9 +40,16 @@ class CryptoSuite:
 
         grid = ft.ResponsiveRow(
             [
-                self.feature_box("Encrypt / Decrypt", on_click=lambda _: self.page.go("/crypto/encrypt")),
-                self.feature_box("Sign / Verify", on_click=lambda _: self.page.go("/crypto/sign")),
-                self.feature_box("Key Management", on_click=lambda _: self.page.go("/crypto/keys")),
+                self.feature_box(
+                    "Encrypt / Decrypt",
+                    on_click=lambda _: self.page.go("/crypto/encrypt"),
+                ),
+                self.feature_box(
+                    "Sign / Verify", on_click=lambda _: self.page.go("/crypto/sign")
+                ),
+                self.feature_box(
+                    "Key Management", on_click=lambda _: self.page.go("/crypto/keys")
+                ),
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             run_spacing=GAP_MD,

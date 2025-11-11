@@ -1,5 +1,4 @@
 import os
-import sqlite3
 
 import flet as ft
 from pycrypt.asymmetric import RSAKey
@@ -114,7 +113,7 @@ class CryptoKeys:
                                     icon=ft.Icons.DELETE_OUTLINE,
                                     tooltip="Delete",
                                     on_click=lambda _, rr=rid: delete(rr),
-                                    icon_color=ft.Colors.RED
+                                    icon_color=ft.Colors.RED,
                                 )
                             ),
                         ]
@@ -297,7 +296,7 @@ class CryptoKeys:
                                     icon=ft.Icons.DELETE_OUTLINE,
                                     tooltip="Delete",
                                     on_click=lambda _, rr=rid: delete(rr),
-                                    icon_color=ft.Colors.RED
+                                    icon_color=ft.Colors.RED,
                                 )
                             ),
                         ]

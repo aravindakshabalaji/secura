@@ -17,7 +17,6 @@ class HomePage:
             text_align=ft.TextAlign.CENTER,
         )
 
-        
         button_area = ft.Container(
             content=ft.ResponsiveRow(
                 controls=[
