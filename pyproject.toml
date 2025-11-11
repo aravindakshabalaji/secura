@@ -1,0 +1,47 @@
+[project]
+name = "secura"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "Aravindaksha Balaji", email = "aravindakshabalaji@gmail.com" },
+    { name = "Arnav Guntur", email = "arnavguntur.2009@gmail.com" },
+]
+dependencies = [
+  "flet==0.28.3",
+  "pycrypt-lib>=1.0.1",
+]
+
+[tool.flet]
+# org name in reverse domain name notation, e.g. "com.mycompany".
+# Combined with project.name to build bundle ID for iOS and Android apps
+org = "com.wallwarm"
+
+# project display name that is used as an app title on Android and iOS home screens,
+# shown in window titles and about app dialogs on desktop.
+product = "secura"
+
+# company name to display in about app dialogs
+company = "WallWarm"
+
+# copyright text to display in about app dialogs
+copyright = "Copyright (C) 2025 by WallWarm"
+
+[tool.flet.app]
+path = "src"
+
+[tool.flet.develop_packages]
+my_local_package = "../pycrypt"
+
+[dependency-groups]
+dev = [
+    "flet[all]==0.28.3",
+    "pycrypt-lib"
+]
+
+[tool.basedpyright]
+typeCheckingMode = "off"
+
+[tool.flet.flutter.pubspec.dependency_overrides]
+webview_flutter_android = "4.10.1"
