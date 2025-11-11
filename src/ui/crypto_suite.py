@@ -1,58 +1,16 @@
-import flet as ft
 
+import flet as ft
+from .components import PrimaryButton
+from .theme import section_title, surface_card, GAP_MD, PADDING_APP
 
 class CryptoSuite:
     def __init__(self, page: ft.Page):
         self.page = page
         self.page.title = "Cryptographic Suite"
 
-    def view(self):
-        title = ft.Text(
-            "🔐 Cryptographic Suite",
-            size=25,
-            weight=ft.FontWeight.BOLD,
-            text_align=ft.TextAlign.CENTER,
-        )
-
-        header = ft.Row(
-            [
-                ft.IconButton(
-                    ft.Icons.ARROW_BACK, on_click=lambda _: self.page.go("/")
-                ),
-                ft.Container(title, expand=True, alignment=ft.alignment.center_left),
-            ],
-            alignment=ft.MainAxisAlignment.START,
-        )
-
-        grid = ft.ResponsiveRow(
-            [
-                self.feature_box(
-                    "Encrypt / Decrypt", lambda _: self.page.go("/crypto/encrypt")
-                ),
-                self.feature_box("Sign / Verify", on_click=lambda _: self.page.go("/crypto/sign")),
-                self.feature_box("Key Management", on_click=lambda _: self.page.go("/crypto/keys")),
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            run_spacing=20,
-            spacing=20,
-        )
-
-        content = ft.Container(
-            ft.Column([header, ft.Divider(), grid], spacing=30),
-            expand=True,
-            padding=20,
-            alignment=ft.alignment.top_center,
-        )
-        return ft.View("/crypto", [content])
-
-    def feature_box(self, title, on_click=None):
+    def feature_box(self, title: str, on_click=None):
         return ft.Container(
-            content=ft.Text(
-                title,
-                size=16,
-                weight=ft.FontWeight.BOLD,
-                text_align=ft.TextAlign.CENTER,
-            ),
+            content=ft.Text(title, size=16, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
             expand=True,
             height=120,
             bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
@@ -60,6 +18,34 @@ class CryptoSuite:
             border_radius=12,
             ink=True,
             on_click=on_click,
-            col={"xs": 12, "sm": 6, "md": 4, "lg": 3},
+            col={"xs": 12, "sm": 6, "md": 4},
             padding=10,
         )
+
+    def view(self) -> ft.View:
+        header = ft.Row(
+            [
+                ft.IconButton(ft.Icons.ARROW_BACK, on_click=lambda _: self.page.go("/")),
+                ft.Text("🔐 Cryptographic Suite", size=26, weight=ft.FontWeight.BOLD),
+            ],
+            alignment=ft.MainAxisAlignment.START,
+        )
+
+        grid = ft.ResponsiveRow(
+            [
+                self.feature_box("Encrypt / Decrypt", on_click=lambda _: self.page.go("/crypto/encrypt")),
+                self.feature_box("Sign / Verify", on_click=lambda _: self.page.go("/crypto/sign")),
+                self.feature_box("Key Management", on_click=lambda _: self.page.go("/crypto/keys")),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            run_spacing=GAP_MD,
+            spacing=GAP_MD,
+        )
+
+        content = ft.Container(
+            ft.Column([header, ft.Divider(), grid], spacing=GAP_MD),
+            expand=True,
+            padding=PADDING_APP,
+            alignment=ft.alignment.top_center,
+        )
+        return ft.View("/crypto", [content])

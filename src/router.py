@@ -9,7 +9,7 @@ ROUTES = {
     "/": HomePage,
     "/crypto": CryptoSuite,
     "/crypto/encrypt": CryptoEncryptDecrypt,
-    "/crypto/sign": CryptoEncryptDecrypt,  # reuse for now
+    "/crypto/sign": CryptoEncryptDecrypt,
     "/crypto/keys": CryptoKeys,
 }
 
@@ -17,7 +17,7 @@ def resolve_route(page: ft.Page, route: str) -> ft.View:
     cls = ROUTES.get(route)
     if cls:
         return cls(page).view()
-    # 404
+    
     return ft.View(
         route="/404",
         controls=[

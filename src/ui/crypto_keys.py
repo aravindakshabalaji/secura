@@ -4,79 +4,192 @@ import sqlite3
 import flet as ft
 from pycrypt.asymmetric import RSAKey
 
+from .components import (
+    PrimaryButton,
+    TonalButton,
+    scrollable_table,
+    vertical_scroll,
+)
+from .theme import GAP_MD, GAP_SM, section_title, subsection_title, surface_card
+
 
 class CryptoKeys:
     def __init__(self, page: ft.Page):
         self.page = page
         self.page.title = "Key Management | Cryptographic Suite"
         self.page.scroll = ft.ScrollMode.AUTO
+        self.conn = page.conn  # shared
 
-        # DB path on the page; set a default if not provided
-        if not hasattr(self.page, "db_path"):
-            self.page.db_path = "secura.db"
-
-        # ensure tables exist
-        self._init_db()
-
-    # ---------- DB helpers ----------
-
-    def _conn(self):
-        # New connection per call. Safe with Flet threads.
-        return sqlite3.connect(self.page.db_path)
-
-    def _init_db(self):
-        with self._conn() as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS user_aes_keys(
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT NOT NULL,
-                    key_material BLOB NOT NULL,
-                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (username) REFERENCES secura(username) ON DELETE CASCADE
-                );
-                """
-            )
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS user_rsa_keys(
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT NOT NULL,
-                    bits INTEGER NOT NULL,
-                    public_pem TEXT NOT NULL,
-                    private_pem TEXT NOT NULL,
-                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (username) REFERENCES secura(username) ON DELETE CASCADE
-                );
-                """
-            )
-            conn.commit()
-
-    # ---------- UI helpers ----------
-
-    @staticmethod
-    def styled_button(text, icon, color, on_click, progress=None):
-        ctrls = [ft.Icon(icon), ft.Text(text)]
-        if progress:
-            ctrls.append(progress)
-        return ft.ElevatedButton(
-            content=ft.Row(
-                ctrls, spacing=8, tight=True, alignment=ft.MainAxisAlignment.CENTER
-            ),
-            bgcolor=color,
-            color=ft.Colors.WHITE,
-            style=ft.ButtonStyle(
-                shape=ft.RoundedRectangleBorder(radius=12),
-                padding=ft.padding.all(15),
-            ),
-            on_click=on_click,
+    # ---------- View ----------
+    def view(self) -> ft.View:
+        header = ft.Row(
+            [
+                ft.IconButton(
+                    icon=ft.Icons.ARROW_BACK,
+                    tooltip="Go Back",
+                    on_click=lambda _: self.page.go("/crypto"),
+                ),
+                ft.Text("🔑 Key Management", size=26, weight=ft.FontWeight.BOLD),
+            ],
+            alignment=ft.MainAxisAlignment.START,
+            spacing=GAP_SM,
         )
 
-    # ---------- RSA tab ----------
+        tabs = ft.Tabs(
+            selected_index=0,
+            animation_duration=300,
+            tabs=[
+                ft.Tab(text="AES", content=self.aes_tab()),
+                ft.Tab(text="RSA", content=self.rsa_tab()),
+                ft.Tab(
+                    text="DH", content=ft.Container(ft.Text("Coming soon"), padding=20)
+                ),
+            ],
+            expand=1,
+        )
 
-    def create_rsa_tab(self):
-        prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
+        return ft.View(
+            route="/crypto/keys",
+            controls=[
+                ft.Column([header, ft.Divider(), tabs], expand=True, spacing=GAP_MD)
+            ],
+            padding=ft.padding.symmetric(horizontal=20, vertical=10),
+        )
 
+    # ---------- AES ----------
+    def aes_tab(self) -> ft.Control:
+        mode_dd = ft.Dropdown(
+            label="Select AES Key Size",
+            options=[
+                ft.DropdownOption(key=s, text=f"AES-{s}") for s in ("128", "192", "256")
+            ],
+            value="128",
+            width=220,
+        )
+        key_field = ft.TextField(
+            label="Key (hex)", read_only=True, width=600, prefix_icon=ft.Icons.KEY
+        )
+        keys_table = ft.DataTable(
+            columns=[
+                ft.DataColumn(ft.Text("ID")),
+                ft.DataColumn(ft.Text("Key (hex)")),
+                ft.DataColumn(ft.Text("Copy")),
+                ft.DataColumn(ft.Text("Delete")),
+            ],
+            rows=[],
+            column_spacing=20,
+            data_row_max_height=48,
+        )
+
+        def refresh():
+            cur = self.conn.execute(
+                "SELECT id, UPPER(hex(key_material)) FROM user_aes_keys WHERE username=? ORDER BY id DESC",
+                (self.page.username,),
+            )
+            rows = []
+            for rid, key_hex in cur.fetchall():
+                rows.append(
+                    ft.DataRow(
+                        cells=[
+                            ft.DataCell(ft.Text(str(rid))),
+                            ft.DataCell(
+                                ft.Text(
+                                    key_hex,
+                                    selectable=True,
+                                    max_lines=1,
+                                    overflow=ft.TextOverflow.ELLIPSIS,
+                                    width=520,
+                                )
+                            ),
+                            ft.DataCell(
+                                ft.IconButton(
+                                    icon=ft.Icons.COPY,
+                                    tooltip="Copy",
+                                    on_click=lambda _,
+                                    v=key_hex: self.page.set_clipboard(v),
+                                )
+                            ),
+                            ft.DataCell(
+                                ft.IconButton(
+                                    icon=ft.Icons.DELETE_OUTLINE,
+                                    tooltip="Delete",
+                                    on_click=lambda _, rr=rid: delete(rr),
+                                    icon_color=ft.Colors.RED
+                                )
+                            ),
+                        ]
+                    )
+                )
+            keys_table.rows = rows
+            self.page.update()
+
+        def delete(row_id: int):
+            self.conn.execute("DELETE FROM user_aes_keys WHERE id=?", (row_id,))
+            self.conn.commit()
+            refresh()
+
+        def save(_):
+            if not key_field.value:
+                return
+            try:
+                kb = bytes.fromhex(key_field.value)
+            except ValueError:
+                return
+            exists = self.conn.execute(
+                "SELECT 1 FROM user_aes_keys WHERE username=? AND key_material=?",
+                (self.page.username, kb),
+            ).fetchone()
+            if not exists:
+                self.conn.execute(
+                    "INSERT INTO user_aes_keys(username, key_material) VALUES (?, ?)",
+                    (self.page.username, kb),
+                )
+                self.conn.commit()
+            refresh()
+
+        def generate(_):
+            size = int(mode_dd.value) // 8
+            key_field.value = os.urandom(size).hex().upper()
+            self.page.update()
+
+        key_field.suffix = ft.IconButton(
+            icon=ft.Icons.COPY,
+            on_click=lambda _: self.page.set_clipboard(key_field.value),
+        )
+
+        refresh()
+
+        actions = ft.Row(
+            [
+                PrimaryButton(
+                    self.page,
+                    "Generate AES Key",
+                    icon=ft.Icons.GENERATING_TOKENS,
+                    on_click=generate,
+                ),
+                TonalButton(self.page, "Save", icon=ft.Icons.SAVE, on_click=save),
+            ],
+            spacing=GAP_MD,
+            alignment=ft.MainAxisAlignment.CENTER,
+        )
+
+        content = ft.Column(
+            [
+                section_title("Advanced Encryption Standard (AES) Keys"),
+                mode_dd,
+                actions,
+                key_field,
+                ft.Divider(),
+                subsection_title("Saved AES keys"),
+                scrollable_table(keys_table),
+            ],
+            spacing=GAP_MD,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+        return ft.Container(vertical_scroll(surface_card(content)), padding=10)
+
+    # ---------- RSA ----------
+    def rsa_tab(self) -> ft.Control:
         sizes = ["1024", "2048", "3072", "4096"]
         size_dd = ft.Dropdown(
             label="RSA Key Size",
@@ -84,60 +197,50 @@ class CryptoKeys:
             value="2048",
             width=220,
         )
-
         pub_field = ft.TextField(
             label="Public Key (PEM)",
             multiline=True,
-            max_lines=5,
+            max_lines=6,
             width=800,
             read_only=True,
-            icon=ft.Icons.VPN_KEY,
+            prefix_icon=ft.Icons.VPN_KEY,
         )
         priv_field = ft.TextField(
             label="Private Key (PEM)",
             multiline=True,
-            max_lines=5,
+            max_lines=6,
             width=800,
             read_only=True,
             password=True,
-            can_reveal_password=False,  # we will supply our own toggle
-            icon=ft.Icons.LOCK,
+            can_reveal_password=False,
+            prefix_icon=ft.Icons.LOCK,
         )
 
-        # Public field copy suffix
-        pub_field.suffix = ft.IconButton(
+        copy_pub = ft.IconButton(
             icon=ft.Icons.COPY,
             tooltip="Copy public key",
             on_click=lambda _: self.page.set_clipboard(pub_field.value),
         )
+        copy_priv = ft.IconButton(
+            icon=ft.Icons.COPY_ALL,
+            tooltip="Copy private key",
+            on_click=lambda _: self.page.set_clipboard(priv_field.value),
+        )
+        toggle_btn = ft.IconButton(icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide")
 
-        # Private field copy + reveal in a fixed-height container to keep vertical center
-        reveal_btn = ft.IconButton(icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide")
-
-        def toggle_visibility(e):
+        def toggle(_):
             priv_field.password = not priv_field.password
-            reveal_btn.icon = (
+            toggle_btn.icon = (
                 ft.Icons.VISIBILITY
                 if not priv_field.password
                 else ft.Icons.VISIBILITY_OFF
             )
             self.page.update()
 
-        reveal_btn.on_click = toggle_visibility
+        toggle_btn.on_click = toggle
+        priv_field.suffix = ft.Row([copy_priv, toggle_btn], spacing=4, tight=True)
+        pub_field.suffix = copy_pub
 
-        copy_btn = ft.IconButton(
-            icon=ft.Icons.COPY,
-            tooltip="Copy private key",
-            on_click=lambda _: self.page.set_clipboard(priv_field.value),
-        )
-
-        priv_field.suffix = ft.Row(
-            controls=[copy_btn, reveal_btn],
-            spacing=4,
-            tight=True,
-        )
-
-        # saved keys table
         rsa_table = ft.DataTable(
             columns=[
                 ft.DataColumn(ft.Text("ID")),
@@ -152,329 +255,119 @@ class CryptoKeys:
             data_row_max_height=52,
         )
 
-        def refresh_rsa():
-            with self._conn() as conn:
-                cur = conn.execute(
-                    "SELECT id, bits, public_pem, private_pem "
-                    "FROM user_rsa_keys WHERE username=? ORDER BY id DESC",
-                    (self.page.username,),
-                )
-                rows = []
-                for rowid, bits, pub_pem, priv_pem in cur.fetchall():
-                    preview = pub_pem.splitlines()[0] if pub_pem else ""
-                    rows.append(
-                        ft.DataRow(
-                            cells=[
-                                ft.DataCell(ft.Text(str(rowid))),
-                                ft.DataCell(ft.Text(str(bits))),
-                                ft.DataCell(
-                                    ft.Text(
-                                        preview,
-                                        max_lines=1,
-                                        overflow=ft.TextOverflow.ELLIPSIS,
-                                        width=520,
-                                    )
-                                ),
-                                ft.DataCell(
-                                    ft.IconButton(
-                                        icon=ft.Icons.COPY,
-                                        tooltip="Copy public PEM",
-                                        on_click=lambda _,
-                                        v=pub_pem: self.page.set_clipboard(v),
-                                    )
-                                ),
-                                ft.DataCell(
-                                    ft.IconButton(
-                                        icon=ft.Icons.COPY_ALL,
-                                        tooltip="Copy private PEM",
-                                        on_click=lambda _,
-                                        v=priv_pem: self.page.set_clipboard(v),
-                                    )
-                                ),
-                                ft.DataCell(
-                                    ft.IconButton(
-                                        icon=ft.Icons.DELETE,
-                                        tooltip="Delete key",
-                                        on_click=lambda _, rid=rowid: delete_rsa(rid),
-                                    )
-                                ),
-                            ]
-                        )
+        def refresh():
+            cur = self.conn.execute(
+                "SELECT id, bits, public_pem, private_pem FROM user_rsa_keys WHERE username=? ORDER BY id DESC",
+                (self.page.username,),
+            )
+            rows = []
+            for rid, bits, pub_pem, priv_pem in cur.fetchall():
+                preview = pub_pem.splitlines()[0] if pub_pem else ""
+                rows.append(
+                    ft.DataRow(
+                        cells=[
+                            ft.DataCell(ft.Text(str(rid))),
+                            ft.DataCell(ft.Text(str(bits))),
+                            ft.DataCell(
+                                ft.Text(
+                                    preview,
+                                    max_lines=1,
+                                    overflow=ft.TextOverflow.ELLIPSIS,
+                                    width=520,
+                                )
+                            ),
+                            ft.DataCell(
+                                ft.IconButton(
+                                    icon=ft.Icons.COPY,
+                                    tooltip="Copy public",
+                                    on_click=lambda _,
+                                    v=pub_pem: self.page.set_clipboard(v),
+                                )
+                            ),
+                            ft.DataCell(
+                                ft.IconButton(
+                                    icon=ft.Icons.COPY_ALL,
+                                    tooltip="Copy private",
+                                    on_click=lambda _,
+                                    v=priv_pem: self.page.set_clipboard(v),
+                                )
+                            ),
+                            ft.DataCell(
+                                ft.IconButton(
+                                    icon=ft.Icons.DELETE_OUTLINE,
+                                    tooltip="Delete",
+                                    on_click=lambda _, rr=rid: delete(rr),
+                                    icon_color=ft.Colors.RED
+                                )
+                            ),
+                        ]
                     )
-                rsa_table.rows = rows
+                )
+            rsa_table.rows = rows
             self.page.update()
 
-        def delete_rsa(row_id: int):
-            with self._conn() as conn:
-                conn.execute("DELETE FROM user_rsa_keys WHERE id=?", (row_id,))
-                conn.commit()
-            refresh_rsa()
+        def delete(row_id: int):
+            self.conn.execute("DELETE FROM user_rsa_keys WHERE id=?", (row_id,))
+            self.conn.commit()
+            refresh()
 
-        def generate_pair(e):
+        prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
+
+        def generate(_):
             prog.visible = True
-            gen_btn.disabled = True
             self.page.update()
-
             bits = int(size_dd.value)
             key = RSAKey.generate(bits)
             pub_field.value = key.export_key("public")
             priv_field.value = key.export_key("private")
-
             prog.visible = False
-            gen_btn.disabled = False
             self.page.update()
 
-        def save_pair(e):
+        def save(_):
             if not pub_field.value or not priv_field.value:
                 return
             bits = int(size_dd.value)
-            with self._conn() as conn:
-                exists = conn.execute(
-                    "SELECT 1 FROM user_rsa_keys WHERE username=? AND public_pem=?",
-                    (self.page.username, pub_field.value),
-                ).fetchone()
-                if exists:
-                    return
-                conn.execute(
-                    "INSERT INTO user_rsa_keys(username, bits, public_pem, private_pem) "
-                    "VALUES(?, ?, ?, ?)",
+            exists = self.conn.execute(
+                "SELECT 1 FROM user_rsa_keys WHERE username=? AND public_pem=?",
+                (self.page.username, pub_field.value),
+            ).fetchone()
+            if not exists:
+                self.conn.execute(
+                    "INSERT INTO user_rsa_keys(username, bits, public_pem, private_pem) VALUES(?, ?, ?, ?)",
                     (self.page.username, bits, pub_field.value, priv_field.value),
                 )
-                conn.commit()
-            refresh_rsa()
+                self.conn.commit()
+            refresh()
 
-        gen_btn = self.styled_button(
-            "Generate RSA Pair",
-            ft.Icons.GENERATING_TOKENS,
-            color=ft.Colors.GREEN_700,
-            on_click=generate_pair,
-            progress=prog,
-        )
-        save_btn = self.styled_button(
-            "Save",
-            ft.Icons.SAVE,
-            color=ft.Colors.BLUE_700,
-            on_click=save_pair,
-        )
+        refresh()
 
-        refresh_rsa()
-
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Text("RSA Key Management", size=22, weight=ft.FontWeight.BOLD),
-                    size_dd,
-                    ft.Row(
-                        [gen_btn, save_btn],
-                        spacing=12,
-                        alignment=ft.MainAxisAlignment.CENTER,
-                    ),
-                    pub_field,
-                    priv_field,
-                    ft.Divider(),
-                    ft.Text("Saved RSA keys", size=18, weight=ft.FontWeight.W_600),
-                    rsa_table,
-                ],
-                spacing=18,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                scroll=ft.ScrollMode.AUTO,
-            ),
-            padding=ft.padding.all(20),
-            alignment=ft.alignment.center,
-        )
-
-    # ---------- AES tab ----------
-
-    def create_aes_tab(self):
-        prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
-
-        modes = ["128", "192", "256"]
-
-        def get_modes():
-            return [ft.DropdownOption(key=mode, text=f"AES-{mode}") for mode in modes]
-
-        mode_dd = ft.Dropdown(
-            label="Select AES Key Size", options=get_modes(), value="128"
-        )
-
-        key_field = ft.TextField(
-            label="Key (hex)",
-            read_only=True,
-            icon=ft.Icons.KEY,
-            width=600,
-            autofocus=True,
-        )
-
-        keys_table = ft.DataTable(
-            columns=[
-                ft.DataColumn(ft.Text("ID")),
-                ft.DataColumn(ft.Text("Key (hex)")),
-                ft.DataColumn(ft.Text("Copy")),
-                ft.DataColumn(ft.Text("Delete")),
-            ],
-            rows=[],
-            column_spacing=20,
-            data_row_max_height=48,
-        )
-
-        def refresh_keys():
-            with self._conn() as conn:
-                cur = conn.execute(
-                    "SELECT id, UPPER(hex(key_material)) "
-                    "FROM user_aes_keys WHERE username=? ORDER BY id DESC",
-                    (self.page.username,),
-                )
-                rows = []
-                for rowid, key_hex in cur.fetchall():
-                    rows.append(
-                        ft.DataRow(
-                            cells=[
-                                ft.DataCell(ft.Text(str(rowid))),
-                                ft.DataCell(
-                                    ft.Text(
-                                        key_hex,
-                                        selectable=True,
-                                        max_lines=1,
-                                        overflow=ft.TextOverflow.ELLIPSIS,
-                                        width=520,
-                                    )
-                                ),
-                                ft.DataCell(
-                                    ft.IconButton(
-                                        icon=ft.Icons.COPY,
-                                        tooltip="Copy key",
-                                        on_click=lambda _,
-                                        v=key_hex: self.page.set_clipboard(v),
-                                    )
-                                ),
-                                ft.DataCell(
-                                    ft.IconButton(
-                                        icon=ft.Icons.DELETE,
-                                        tooltip="Delete key",
-                                        on_click=lambda _, rid=rowid: delete_aes(rid),
-                                    )
-                                ),
-                            ]
-                        )
-                    )
-                keys_table.rows = rows
-            self.page.update()
-
-        def delete_aes(row_id: int):
-            with self._conn() as conn:
-                conn.execute("DELETE FROM user_aes_keys WHERE id=?", (row_id,))
-                conn.commit()
-            refresh_keys()
-
-        def save_key(e):
-            if not key_field.value:
-                return
-            try:
-                key_bytes = bytes.fromhex(key_field.value)
-            except ValueError:
-                return
-            with self._conn() as conn:
-                exists = conn.execute(
-                    "SELECT 1 FROM user_aes_keys WHERE username=? AND key_material=?",
-                    (self.page.username, key_bytes),
-                ).fetchone()
-                if exists:
-                    return
-                conn.execute(
-                    "INSERT INTO user_aes_keys (username, key_material) VALUES (?, ?)",
-                    (self.page.username, key_bytes),
-                )
-                conn.commit()
-            refresh_keys()
-
-        key_field.suffix = ft.Row(
+        actions = ft.Row(
             [
-                ft.IconButton(
-                    icon=ft.Icons.COPY,
-                    on_click=lambda _: self.page.set_clipboard(key_field.value),
+                PrimaryButton(
+                    self.page,
+                    "Generate RSA Pair",
+                    icon=ft.Icons.GENERATING_TOKENS,
+                    on_click=generate,
                 ),
-                ft.IconButton(icon=ft.Icons.SAVE, on_click=save_key),
+                TonalButton(self.page, "Save", icon=ft.Icons.SAVE, on_click=save),
+                prog,
             ],
-            tight=True,
+            spacing=GAP_MD,
+            alignment=ft.MainAxisAlignment.CENTER,
         )
 
-        def generate(e):
-            prog.visible = True
-            generate_key.disabled = True
-            self.page.update()
-
-            key_field.value = os.urandom(int(mode_dd.value) // 8).hex().upper()
-
-            prog.visible = False
-            generate_key.disabled = False
-            self.page.update()
-
-        generate_key = self.styled_button(
-            "Generate",
-            ft.Icons.GENERATING_TOKENS,
-            color=ft.Colors.GREEN_700,
-            on_click=generate,
-            progress=prog,
-        )
-
-        refresh_keys()
-
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Text(
-                        "Advanced Encryption Standard (AES) Keys",
-                        size=22,
-                        weight=ft.FontWeight.BOLD,
-                    ),
-                    mode_dd,
-                    generate_key,
-                    key_field,
-                    ft.Divider(),
-                    ft.Text("Saved keys", size=18, weight=ft.FontWeight.W_600),
-                    keys_table,
-                ],
-                spacing=20,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                scroll=ft.ScrollMode.AUTO,
-            ),
-            padding=ft.padding.all(20),
-            alignment=ft.alignment.center,
-        )
-
-    # ---------- View ----------
-
-    def view(self):
-        header = ft.Row(
+        content = ft.Column(
             [
-                ft.IconButton(
-                    icon=ft.Icons.ARROW_BACK,
-                    tooltip="Go Back",
-                    on_click=lambda _: self.page.go("/crypto"),
-                ),
-                ft.Text("🔑 Key Management", size=28, weight=ft.FontWeight.BOLD),
+                section_title("RSA Key Management"),
+                size_dd,
+                actions,
+                pub_field,
+                priv_field,
+                ft.Divider(),
+                subsection_title("Saved RSA keys"),
+                scrollable_table(rsa_table),
             ],
-            alignment=ft.MainAxisAlignment.START,
-            spacing=15,
+            spacing=GAP_MD,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
-
-        aes_tab = self.create_aes_tab()
-        rsa_tab = self.create_rsa_tab()
-
-        tabs = ft.Tabs(
-            selected_index=0,
-            animation_duration=300,
-            tabs=[
-                ft.Tab(text="AES", content=aes_tab),
-                ft.Tab(text="RSA", content=rsa_tab),
-                ft.Tab(text="DH", content=None),
-            ],
-            expand=1,
-            indicator_color=ft.Colors.CYAN_700,
-        )
-
-        return ft.View(
-            route="/crypto/keys",
-            controls=[ft.Column([header, ft.Divider(), tabs], expand=True, spacing=10)],
-            padding=ft.padding.symmetric(horizontal=20, vertical=10),
-        )
+        return ft.Container(vertical_scroll(surface_card(content)), padding=10)

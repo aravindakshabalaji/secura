@@ -31,9 +31,6 @@ copyright = "Copyright (C) 2025 by WallWarm"
 [tool.flet.app]
 path = "src"
 
-[tool.flet.develop_packages]
-my_local_package = "../pycrypt"
-
 [dependency-groups]
 dev = [
     "flet[all]==0.28.3",
