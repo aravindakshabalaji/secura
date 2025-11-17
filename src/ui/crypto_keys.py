@@ -4,6 +4,7 @@ import flet as ft
 from pycrypt.asymmetric import RSAKey
 
 from .components import (
+    IconButton,
     PrimaryButton,
     TonalButton,
     scrollable_table,
@@ -23,7 +24,8 @@ class CryptoKeys:
     def view(self) -> ft.View:
         header = ft.Row(
             [
-                ft.IconButton(
+                IconButton(
+                    self.page,
                     icon=ft.Icons.ARROW_BACK,
                     tooltip="Go Back",
                     on_click=lambda _: self.page.go("/crypto"),
@@ -66,8 +68,35 @@ class CryptoKeys:
             width=220,
         )
         key_field = ft.TextField(
-            label="Key (hex)", read_only=True, width=600, prefix_icon=ft.Icons.KEY
+            label="Key (hex)", read_only=True, width=600, prefix_icon=ft.Icons.KEY, password=True
         )
+        toggle_btn = IconButton(
+            self.page, icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide"
+        )
+
+        def toggle(_):
+            key_field.password = not key_field.password
+            toggle_btn.icon = (
+                ft.Icons.VISIBILITY
+                if not key_field.password
+                else ft.Icons.VISIBILITY_OFF
+            )
+            self.page.update()
+
+        toggle_btn.on_click = toggle
+        key_field.suffix = ft.Row(
+            [
+                IconButton(
+                    self.page,
+                    icon=ft.Icons.COPY,
+                    on_click=lambda _: self.page.set_clipboard(key_field.value),
+                ),
+                toggle_btn,
+            ],
+            spacing=4,
+            tight=True,
+        )
+
         keys_table = ft.DataTable(
             columns=[
                 ft.DataColumn(ft.Text("ID")),
@@ -101,7 +130,8 @@ class CryptoKeys:
                                 )
                             ),
                             ft.DataCell(
-                                ft.IconButton(
+                                IconButton(
+                                    self.page,
                                     icon=ft.Icons.COPY,
                                     tooltip="Copy",
                                     on_click=lambda _,
@@ -109,7 +139,8 @@ class CryptoKeys:
                                 )
                             ),
                             ft.DataCell(
-                                ft.IconButton(
+                                IconButton(
+                                    self.page,
                                     icon=ft.Icons.DELETE_OUTLINE,
                                     tooltip="Delete",
                                     on_click=lambda _, rr=rid: delete(rr),
@@ -150,11 +181,6 @@ class CryptoKeys:
             size = int(mode_dd.value) // 8
             key_field.value = os.urandom(size).hex().upper()
             self.page.update()
-
-        key_field.suffix = ft.IconButton(
-            icon=ft.Icons.COPY,
-            on_click=lambda _: self.page.set_clipboard(key_field.value),
-        )
 
         refresh()
 
@@ -202,7 +228,7 @@ class CryptoKeys:
             max_lines=6,
             width=800,
             read_only=True,
-            prefix_icon=ft.Icons.VPN_KEY,
+            prefix_icon=ft.Icons.KEY,
         )
         priv_field = ft.TextField(
             label="Private Key (PEM)",
@@ -215,17 +241,21 @@ class CryptoKeys:
             prefix_icon=ft.Icons.LOCK,
         )
 
-        copy_pub = ft.IconButton(
+        copy_pub = IconButton(
+            self.page,
             icon=ft.Icons.COPY,
             tooltip="Copy public key",
             on_click=lambda _: self.page.set_clipboard(pub_field.value),
         )
-        copy_priv = ft.IconButton(
+        copy_priv = IconButton(
+            self.page,
             icon=ft.Icons.COPY_ALL,
             tooltip="Copy private key",
             on_click=lambda _: self.page.set_clipboard(priv_field.value),
         )
-        toggle_btn = ft.IconButton(icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide")
+        toggle_btn = IconButton(
+            self.page, icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide"
+        )
 
         def toggle(_):
             priv_field.password = not priv_field.password
@@ -261,7 +291,7 @@ class CryptoKeys:
             )
             rows = []
             for rid, bits, pub_pem, priv_pem in cur.fetchall():
-                preview = pub_pem.splitlines()[0] if pub_pem else ""
+                preview = pub_pem.splitlines()[1] if pub_pem else ""
                 rows.append(
                     ft.DataRow(
                         cells=[
@@ -276,7 +306,8 @@ class CryptoKeys:
                                 )
                             ),
                             ft.DataCell(
-                                ft.IconButton(
+                                IconButton(
+                                    self.page,
                                     icon=ft.Icons.COPY,
                                     tooltip="Copy public",
                                     on_click=lambda _,
@@ -284,7 +315,8 @@ class CryptoKeys:
                                 )
                             ),
                             ft.DataCell(
-                                ft.IconButton(
+                                IconButton(
+                                    self.page,
                                     icon=ft.Icons.COPY_ALL,
                                     tooltip="Copy private",
                                     on_click=lambda _,
@@ -292,7 +324,8 @@ class CryptoKeys:
                                 )
                             ),
                             ft.DataCell(
-                                ft.IconButton(
+                                IconButton(
+                                    self.page,
                                     icon=ft.Icons.DELETE_OUTLINE,
                                     tooltip="Delete",
                                     on_click=lambda _, rr=rid: delete(rr),

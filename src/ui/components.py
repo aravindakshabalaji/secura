@@ -49,6 +49,19 @@ def DangerButton(
     )
 
 
+def IconButton(page: ft.Page, *args, **kwargs) -> ft.IconButton:
+    on_click = kwargs.pop("on_click", None)
+
+    def click_event(e):
+        page.hf.heavy_impact()
+        if on_click:
+            on_click(e)
+
+    kwargs["on_click"] = click_event
+
+    return ft.IconButton(*args, **kwargs)
+
+
 def IconTextButton(page: ft.Page, text: str, icon, on_click=None) -> ft.TextButton:
     def click_event(e):
         page.hf.heavy_impact()
@@ -60,8 +73,11 @@ def IconTextButton(page: ft.Page, text: str, icon, on_click=None) -> ft.TextButt
 def toolbar_back(page: ft.Page, title: str, route: str) -> ft.Row:
     return ft.Row(
         [
-            ft.IconButton(
-                ft.Icons.ARROW_BACK, tooltip="Back", on_click=lambda _: page.go(route)
+            IconButton(
+                page,
+                ft.Icons.ARROW_BACK,
+                tooltip="Back",
+                on_click=lambda _: page.go(route),
             ),
             ft.Text(title, size=28, weight=ft.FontWeight.BOLD),
         ],

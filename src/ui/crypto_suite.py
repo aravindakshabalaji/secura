@@ -1,7 +1,8 @@
 import flet as ft
 
-from .theme import GAP_MD, PADDING_APP
+from ui.components import IconButton
 
+from .theme import GAP_MD, PADDING_APP
 
 class CryptoSuite:
     def __init__(self, page: ft.Page):
@@ -30,8 +31,8 @@ class CryptoSuite:
     def view(self) -> ft.View:
         header = ft.Row(
             [
-                ft.IconButton(
-                    ft.Icons.ARROW_BACK, on_click=lambda _: self.page.go("/")
+                IconButton(
+                    self.page, ft.Icons.ARROW_BACK, on_click=lambda _: self.page.go("/")
                 ),
                 ft.Text("🔐 Cryptographic Suite", size=26, weight=ft.FontWeight.BOLD),
             ],
