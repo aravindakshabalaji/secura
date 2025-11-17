@@ -10,8 +10,7 @@ authors = [
 ]
 dependencies = [
   "flet==0.28.3",
-  "pycrypt-lib>=1.0.1",
-  "pygame-ce>=2.5.6",
+  "pycrypt-lib>=1.0.3",
 ]
 
 [tool.flet]
