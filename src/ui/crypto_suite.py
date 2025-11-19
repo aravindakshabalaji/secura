@@ -4,6 +4,7 @@ from ui.components import IconButton
 
 from .theme import GAP_MD, PADDING_APP
 
+
 class CryptoSuite:
     def __init__(self, page: ft.Page):
         self.page = page
@@ -42,11 +43,16 @@ class CryptoSuite:
         grid = ft.ResponsiveRow(
             [
                 self.feature_box(
-                    "Encrypt / Decrypt",
-                    on_click=lambda _: self.page.go("/crypto/encrypt"),
+                    "AES Encrypt / Decrypt",
+                    on_click=lambda _: self.page.go("/crypto/aes-enc-dec"),
                 ),
                 self.feature_box(
-                    "Sign / Verify", on_click=lambda _: self.page.go("/crypto/sign")
+                    "RSA Encrypt / Decrypt",
+                    on_click=lambda _: self.page.go("/crypto/rsa-enc-dec"),
+                ),
+                self.feature_box(
+                    "RSA Sign / Verify",
+                    on_click=lambda _: self.page.go("/crypto/rsa-sign-verify"),
                 ),
                 self.feature_box(
                     "Key Management", on_click=lambda _: self.page.go("/crypto/keys")
@@ -58,7 +64,10 @@ class CryptoSuite:
         )
 
         content = ft.Container(
-            ft.Column([header, ft.Divider(), grid], spacing=GAP_MD),
+            ft.Column(
+                [ft.SafeArea(content=header, top=True), ft.Divider(), grid],
+                spacing=GAP_MD,
+            ),
             expand=True,
             padding=PADDING_APP,
             alignment=ft.alignment.top_center,

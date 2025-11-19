@@ -25,10 +25,7 @@ def main(page: ft.Page):
 
     def view_pop(e: ft.ViewPopEvent):
         page.views.pop()
-        if page.views:
-            page.go(page.views[-1].route)
-        else:
-            page.go("/")
+        page.go(page.views[-1].route if page.views else "/")
 
     page.on_route_change = route_change
     page.on_view_pop = view_pop

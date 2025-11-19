@@ -1,23 +1,20 @@
-import os
+import os.path
+from secrets import token_bytes, token_hex
 
 import flet as ft
-from pycrypt.symmetric import (
-    AES_CBC,
-    AES_CTR,
-    AES_ECB,
-    AES_GCM,
-)
+from pycrypt.symmetric import AES_CBC, AES_CTR, AES_ECB, AES_GCM
 
 from .components import IconButton, PrimaryButton, TonalButton, vertical_scroll
 from .theme import GAP_MD, GAP_SM, section_title, surface_card
 
 
-class CryptoEncryptDecrypt:
+class AESEncryptDecrypt:
     def __init__(self, page: ft.Page):
         self.page = page
-        self.page.title = "Encrypt / Decrypt | Cryptographic Suite"
+        self.page.title = "AES Encrypt / Decrypt | Cryptographic Suite"
         self.page.scroll = ft.ScrollMode.AUTO
 
+    # -------- View ---------
     def view(self) -> ft.View:
         header = ft.Row(
             [
@@ -52,9 +49,13 @@ class CryptoEncryptDecrypt:
         )
 
         return ft.View(
-            route="/crypto/encrypt",
+            route="/crypto/aes-enc-dec",
             controls=[
-                ft.Column([header, ft.Divider(), tabs], expand=True, spacing=GAP_MD)
+                ft.Column(
+                    [ft.SafeArea(content=header, top=True), ft.Divider(), tabs],
+                    expand=True,
+                    spacing=GAP_MD,
+                )
             ],
             padding=ft.padding.symmetric(horizontal=20, vertical=10),
         )
@@ -74,7 +75,7 @@ class CryptoEncryptDecrypt:
         )
 
         key_field = ft.TextField(
-            label="Key (Hex, 32/48/64 characters)",
+            label="Key (hex, 32/48/64 characters)",
             password=True,
             can_reveal_password=True,
             prefix_icon=ft.Icons.KEY,
@@ -83,27 +84,34 @@ class CryptoEncryptDecrypt:
         key_field.suffix = IconButton(
             self.page,
             icon=ft.Icons.PASTE,
-            tooltip="Paste",
+            tooltip="Paste key from clipboard",
             on_click=lambda _: self._paste(key_field),
         )
 
         iv_field = ft.TextField(
-            label="IV (Hex, 32 characters)",
+            prefix_icon=ft.Icons.TAG,
+            label="IV (hex, 32 characters)",
             width=420,
             visible=False,
         )
-        nonce_field = ft.TextField(label="Nonce (Hex)", width=420, visible=False)
+        nonce_field = ft.TextField(
+            prefix_icon=ft.Icons.TAG, label="Nonce (Hex)", width=420, visible=False
+        )
         aad_field = ft.TextField(
-            label="AAD (Hex, optional for GCM)", width=420, visible=False
+            prefix_icon=ft.Icons.STORAGE,
+            label="AAD (hex, optional for GCM)",
+            width=420,
+            visible=False,
         )
         tag_field = ft.TextField(
-            label="Tag (Hex, 32 characters) — required for GCM Decrypt",
+            prefix_icon=ft.Icons.LOCAL_OFFER,
+            label="Tag (hex, 32 characters) — required for GCM Decrypt",
             width=420,
             visible=False,
         )
 
         def gen_iv(_):
-            iv_field.value = os.urandom(16).hex().upper()
+            iv_field.value = token_hex(16).upper()
             self.page.update()
 
         def gen_nonce(_):
@@ -114,36 +122,41 @@ class CryptoEncryptDecrypt:
                 size = 12
             else:
                 size = 12
-            nonce_field.value = os.urandom(size).hex().upper()
+            nonce_field.value = token_hex(size).upper()
             self.page.update()
 
         iv_field.suffix = IconButton(
-            self.page, icon=ft.Icons.CACHED, tooltip="Generate IV", on_click=gen_iv
+            self.page,
+            icon=ft.Icons.CACHED,
+            tooltip="Generate random IV",
+            on_click=gen_iv,
         )
         nonce_field.suffix = IconButton(
             self.page,
             icon=ft.Icons.CACHED,
-            tooltip="Generate Nonce",
+            tooltip="Generate random nonce",
             on_click=gen_nonce,
         )
 
         input_field = ft.TextField(
-            label="Input (Plaintext for Encrypt, Ciphertext for Decrypt)",
+            prefix_icon=ft.Icons.INPUT,
+            label="Input (plaintext for encrypt, ciphertext for decrypt)",
             multiline=True,
             max_lines=6,
-            width=700,
+            width=500,
         )
         input_field.suffix = IconButton(
             self.page,
             icon=ft.Icons.PASTE,
-            tooltip="Paste",
+            tooltip="Paste from clipboard",
             on_click=lambda _: self._paste(input_field),
         )
         output_field = ft.TextField(
+            prefix_icon=ft.Icons.OUTPUT,
             label="Output",
             multiline=True,
             max_lines=6,
-            width=700,
+            width=500,
             read_only=True,
         )
 
@@ -167,7 +180,7 @@ class CryptoEncryptDecrypt:
                 ),
                 IconButton(
                     self.page,
-                    icon=ft.Icons.ARROW_UPWARD,
+                    icon=ft.Icons.SYNC_ALT,
                     tooltip="Fill input with output",
                     on_click=fill_input_from_output,
                 ),
@@ -185,16 +198,17 @@ class CryptoEncryptDecrypt:
 
             if m == "CBC":
                 iv_field.visible = True
-                iv_field.label = "IV (Hex, 32 characters)"
+                iv_field.label = "IV (hex, 32 characters)"
             elif m == "CTR":
                 nonce_field.visible = True
-                nonce_field.label = "Nonce (Hex, 16 characters)"
+                nonce_field.label = "Nonce (hex, 16 characters)"
             elif m == "GCM":
                 nonce_field.visible = True
-                nonce_field.label = "Nonce (Hex, 24 characters)"
+                nonce_field.label = "Nonce (hex, 24 characters)"
                 aad_field.visible = True
                 tag_field.visible = True
-                tag_field.label = "Tag (Hex, 32 characters)"
+                tag_field.label = "Tag (hex, 32 characters)"
+
             self.page.update()
 
         mode_dd.on_change = update_mode
@@ -215,7 +229,12 @@ class CryptoEncryptDecrypt:
 
         def validate_key():
             try:
-                return bytes.fromhex(key_field.value.strip())
+                key = bytes.fromhex(key_field.value.strip())
+                if len(key) not in (16, 24, 32):
+                    key_field.error_text = "Key must be 32/48/64 hex characters long"
+                    return None
+
+                return key
             except Exception:
                 key_field.error_text = "Key must be valid hex"
                 self.page.update()
@@ -252,6 +271,7 @@ class CryptoEncryptDecrypt:
                 warning_msg.visible = True
 
             mode = mode_dd.value
+
             try:
                 if mode == "ECB":
                     c = AES_ECB(key)
@@ -262,16 +282,19 @@ class CryptoEncryptDecrypt:
                         iv_field.error_text = "IV required"
                         self.page.update()
                         return
+
                     try:
                         iv = bytes.fromhex(iv_field.value.strip())
                     except Exception:
                         iv_field.error_text = "IV must be valid hex"
                         self.page.update()
                         return
+
                     if len(iv) != 16:
                         iv_field.error_text = "IV must be 32 characters"
                         self.page.update()
                         return
+
                     c = AES_CBC(key)
                     ct = c.encrypt(data.encode(), iv=iv)
                     output_field.value = ct.hex().upper()
@@ -280,16 +303,19 @@ class CryptoEncryptDecrypt:
                         nonce_field.error_text = "Nonce required"
                         self.page.update()
                         return
+
                     try:
                         nonce = bytes.fromhex(nonce_field.value.strip())
                     except Exception:
                         nonce_field.error_text = "Nonce must be valid hex"
                         self.page.update()
                         return
+
                     if len(nonce) != 8:
                         nonce_field.error_text = "Nonce must be 16 characters for CTR"
                         self.page.update()
                         return
+
                     c = AES_CTR(key)
                     ct = c.encrypt(data.encode(), nonce=nonce)
                     output_field.value = ct.hex().upper()
@@ -298,17 +324,26 @@ class CryptoEncryptDecrypt:
                         nonce_field.error_text = "Nonce required"
                         self.page.update()
                         return
+
                     try:
                         nonce = bytes.fromhex(nonce_field.value.strip())
                     except Exception:
                         nonce_field.error_text = "Nonce must be valid hex"
                         self.page.update()
                         return
+
                     if len(nonce) != 12:
                         nonce_field.error_text = "Nonce must be 24 characters for GCM"
                         self.page.update()
                         return
-                    aad = bytes.fromhex(aad_field.value) if aad_field.value else b""
+
+                    try:
+                        aad = bytes.fromhex(aad_field.value.strip())
+                    except Exception:
+                        aad_field.error_text = "AAD must be valid hex"
+                        self.page.update()
+                        return
+
                     c = AES_GCM(key)
                     ct, tag = c.encrypt(data.encode(), nonce=nonce, aad=aad)
                     output_field.value = ct.hex().upper()
@@ -317,6 +352,7 @@ class CryptoEncryptDecrypt:
                     output_field.value = "Unsupported mode"
             except Exception as err:
                 output_field.value = f"Error: {err}"
+
             self.page.update()
 
         def decrypt_click(_):
@@ -356,16 +392,19 @@ class CryptoEncryptDecrypt:
                         iv_field.error_text = "IV required"
                         self.page.update()
                         return
+
                     try:
                         iv = bytes.fromhex(iv_field.value.strip())
                     except Exception:
                         iv_field.error_text = "IV must be valid hex"
                         self.page.update()
                         return
+
                     if len(iv) != 16:
                         iv_field.error_text = "IV must be 32 characters"
                         self.page.update()
                         return
+
                     c = AES_CBC(key)
                     pt = c.decrypt(ct_bytes, iv=iv)
                     output_field.value = pt.decode(errors="replace")
@@ -374,16 +413,19 @@ class CryptoEncryptDecrypt:
                         nonce_field.error_text = "Nonce required"
                         self.page.update()
                         return
+
                     try:
                         nonce = bytes.fromhex(nonce_field.value.strip())
                     except Exception:
                         nonce_field.error_text = "Nonce must be valid hex"
                         self.page.update()
                         return
+
                     if len(nonce) != 8:
                         nonce_field.error_text = "Nonce must be 16 characters for CTR"
                         self.page.update()
                         return
+
                     c = AES_CTR(key)
                     pt = c.decrypt(ct_bytes, nonce=nonce)
                     output_field.value = pt.decode(errors="replace")
@@ -392,32 +434,38 @@ class CryptoEncryptDecrypt:
                         nonce_field.error_text = "Nonce required"
                         self.page.update()
                         return
+
                     try:
                         nonce = bytes.fromhex(nonce_field.value.strip())
                     except Exception:
                         nonce_field.error_text = "Nonce must be valid hex"
                         self.page.update()
                         return
+
                     if len(nonce) != 12:
                         nonce_field.error_text = "Nonce must be 24 characters for GCM"
                         self.page.update()
                         return
                     if not tag_field.value or not is_hex(tag_field.value):
-                        tag_field.error_text = "Tag hex required for GCM decrypt"
+                        tag_field.error_text = "Valid tag hex required for GCM decrypt"
                         self.page.update()
                         return
+
                     tag = bytes.fromhex(tag_field.value.strip())
                     aad = bytes.fromhex(aad_field.value) if aad_field.value else b""
                     c = AES_GCM(key)
                     try:
                         pt = c.decrypt(ct_bytes, nonce=nonce, tag=tag, aad=aad)
                         output_field.value = pt.decode(errors="replace")
-                    except Exception as err:
-                        output_field.value = f"Error: GCM authentication failed ({err})"
+                    except Exception:
+                        tag_field.error_text = (
+                            "GCM authentication tag mismatch - invalid tag provided"
+                        )
                 else:
                     output_field.value = "Unsupported mode"
             except Exception as err:
                 output_field.value = f"Error: {err}"
+
             self.page.update()
 
         buttons = ft.Row(
@@ -442,30 +490,44 @@ class CryptoEncryptDecrypt:
                 section_title("Text Mode"),
                 mode_dd,
                 key_field,
-                ft.Row(
-                    [iv_field, nonce_field],
+                iv_field,
+                nonce_field,
+                ft.ResponsiveRow(
+                    [
+                        ft.Container(aad_field, col={"sm": 6}),
+                        ft.Container(tag_field, col={"sm": 6}),
+                    ],
                     alignment=ft.MainAxisAlignment.CENTER,
                     spacing=12,
+                    width=840,
                 ),
-                ft.Row(
-                    [aad_field, tag_field],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    spacing=12,
-                ),
-                ft.Container(input_field, alignment=ft.alignment.center),
-                ft.Container(warning_msg, alignment=ft.alignment.center),
                 buttons,
-                ft.Container(output_field, alignment=ft.alignment.center),
+                ft.Container(warning_msg, alignment=ft.alignment.center),
+                ft.ResponsiveRow(
+                    [
+                        ft.Container(
+                            input_field, alignment=ft.alignment.center, col={"sm": 6}
+                        ),
+                        ft.Container(
+                            output_field, alignment=ft.alignment.center, col={"sm": 6}
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=12,
+                    width=1000,
+                ),
             ],
             spacing=GAP_MD,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
         update_mode()
+
         return ft.Container(vertical_scroll(surface_card(content)), padding=10)
 
     # -------- File mode --------
     def file_mode(self) -> ft.Control:
+        prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
         selected_file_info = ft.Text("No file selected.", color=ft.Colors.AMBER_700)
 
         key_field = ft.TextField(
@@ -478,7 +540,7 @@ class CryptoEncryptDecrypt:
         key_field.suffix = IconButton(
             self.page,
             icon=ft.Icons.PASTE,
-            tooltip="Paste",
+            tooltip="Paste key from clipboard",
             on_click=lambda _: self._paste(key_field),
         )
 
@@ -504,6 +566,8 @@ class CryptoEncryptDecrypt:
         file_picker.on_result = on_file_pick
 
         def handle_file(action: str):
+            self.page.update()
+
             if not selected_path:
                 selected_file_info.value = "Select a file first."
                 selected_file_info.color = ft.Colors.RED_400
@@ -514,13 +578,20 @@ class CryptoEncryptDecrypt:
                 selected_file_info.color = ft.Colors.RED_400
                 self.page.update()
                 return
+
+            prog.visible = True
+            self.page.update()
+
             try:
                 with open(selected_path, "rb") as f:
                     data = f.read()
                 key = bytes.fromhex(key_field.value.strip())
                 c = AES_CTR(key)
                 if action == "encrypt":
-                    nonce = os.urandom(8)
+                    prog.visible = True
+                    self.page.update()
+
+                    nonce = token_bytes(8)
                     result = nonce + c.encrypt(data, nonce=nonce)
                     out_name = selected_path + ".enc"
                     message = "Encrypted."
@@ -546,7 +617,9 @@ class CryptoEncryptDecrypt:
             except Exception as err:
                 selected_file_info.value = f"❌ Error: {err}"
                 selected_file_info.color = ft.Colors.RED_400
-            self.page.update()
+            finally:
+                prog.visible = False
+                self.page.update()
 
         buttons = ft.Row(
             [
@@ -554,7 +627,11 @@ class CryptoEncryptDecrypt:
                     self.page,
                     "Select File",
                     icon=ft.Icons.FOLDER_OPEN,
-                    on_click=lambda _: file_picker.pick_files(allow_multiple=False),
+                    on_click=lambda _: (
+                        self._show_not_supported("Uploading files")
+                        if self._platform() == "web"
+                        else file_picker.pick_files(allow_multiple=False),
+                    ),
                 ),
                 PrimaryButton(
                     self.page,
@@ -568,6 +645,7 @@ class CryptoEncryptDecrypt:
                     icon=ft.Icons.LOCK_OPEN,
                     on_click=lambda _: handle_file("decrypt"),
                 ),
+                prog,
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             spacing=GAP_MD,
@@ -599,3 +677,22 @@ class CryptoEncryptDecrypt:
     def _paste(self, field: ft.TextField):
         field.value = self.page.get_clipboard()
         self.page.update()
+
+    def _platform(self):
+        try:
+            if self.page.web:
+                return "web"
+            else:
+                return self.page.platform.name.lower()
+        except Exception:
+            return None
+
+    def _show_not_supported(self, action: str):
+        plat = self._platform()
+        self.page.open(
+            ft.SnackBar(
+                ft.Text(
+                    f"{action} not supported on platform: {plat if plat else 'unknown'}"
+                )
+            )
+        )

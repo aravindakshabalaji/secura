@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.9"
 authors = [
     { name = "Aravindaksha Balaji", email = "aravindakshabalaji@gmail.com" },
-    { name = "Arnav Guntur", email = "arnavguntur.2009@gmail.com" },
 ]
 dependencies = [
   "flet==0.28.3",
@@ -16,17 +15,17 @@ dependencies = [
 [tool.flet]
 # org name in reverse domain name notation, e.g. "com.mycompany".
 # Combined with project.name to build bundle ID for iOS and Android apps
-org = "com.wallwarm"
+org = "com.secura"
 
 # project display name that is used as an app title on Android and iOS home screens,
 # shown in window titles and about app dialogs on desktop.
 product = "secura"
 
 # company name to display in about app dialogs
-company = "WallWarm"
+company = "Aravindaksha Balaji"
 
 # copyright text to display in about app dialogs
-copyright = "Copyright (C) 2025 by WallWarm"
+copyright = "Copyright (C) 2025 by Aravindaksha Balaji"
 
 [tool.flet.app]
 path = "src"

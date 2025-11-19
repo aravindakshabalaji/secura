@@ -1,16 +1,19 @@
 import flet as ft
 
-from ui.crypto_encrypt_decrypt import CryptoEncryptDecrypt
-from ui.crypto_keys import CryptoKeys
+from ui.crypto_encrypt_decrypt import AESEncryptDecrypt
+from ui.crypto_keys import KeyManagement
+from ui.crypto_rsa import RSAEncryptDecrypt
+from ui.crypto_sign_verify import RSASignVerify
 from ui.crypto_suite import CryptoSuite
 from ui.home import HomePage
 
 ROUTES = {
     "/": HomePage,
     "/crypto": CryptoSuite,
-    "/crypto/encrypt": CryptoEncryptDecrypt,
-    "/crypto/sign": CryptoEncryptDecrypt,
-    "/crypto/keys": CryptoKeys,
+    "/crypto/aes-enc-dec": AESEncryptDecrypt,
+    "/crypto/rsa-sign-verify": RSASignVerify,
+    "/crypto/keys": KeyManagement,
+    "/crypto/rsa-enc-dec": RSAEncryptDecrypt,
 }
 
 

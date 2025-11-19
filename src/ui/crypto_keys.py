@@ -1,4 +1,4 @@
-import os
+from secrets import token_hex
 
 import flet as ft
 from pycrypt.asymmetric import RSAKey
@@ -13,12 +13,12 @@ from .components import (
 from .theme import GAP_MD, GAP_SM, section_title, subsection_title, surface_card
 
 
-class CryptoKeys:
+class KeyManagement:
     def __init__(self, page: ft.Page):
         self.page = page
         self.page.title = "Key Management | Cryptographic Suite"
         self.page.scroll = ft.ScrollMode.AUTO
-        self.conn = page.conn  # shared
+        self.conn = page.conn
 
     # ---------- View ----------
     def view(self) -> ft.View:
@@ -52,7 +52,11 @@ class CryptoKeys:
         return ft.View(
             route="/crypto/keys",
             controls=[
-                ft.Column([header, ft.Divider(), tabs], expand=True, spacing=GAP_MD)
+                ft.Column(
+                    [ft.SafeArea(content=header, top=True), ft.Divider(), tabs],
+                    expand=True,
+                    spacing=GAP_MD,
+                )
             ],
             padding=ft.padding.symmetric(horizontal=20, vertical=10),
         )
@@ -60,18 +64,25 @@ class CryptoKeys:
     # ---------- AES ----------
     def aes_tab(self) -> ft.Control:
         mode_dd = ft.Dropdown(
-            label="Select AES Key Size",
+            label="AES Key Size",
             options=[
-                ft.DropdownOption(key=s, text=f"AES-{s}") for s in ("128", "192", "256")
+                ft.DropdownOption(key=s, text=f"{s} bits")
+                for s in ("128", "192", "256")
             ],
             value="128",
             width=220,
         )
+
         key_field = ft.TextField(
-            label="Key (hex)", read_only=True, width=600, prefix_icon=ft.Icons.KEY, password=True
+            label="Key (hex)",
+            read_only=True,
+            width=600,
+            prefix_icon=ft.Icons.KEY,
+            password=True,
         )
+
         toggle_btn = IconButton(
-            self.page, icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide"
+            self.page, icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide Key"
         )
 
         def toggle(_):
@@ -84,6 +95,7 @@ class CryptoKeys:
             self.page.update()
 
         toggle_btn.on_click = toggle
+
         key_field.suffix = ft.Row(
             [
                 IconButton(
@@ -102,6 +114,7 @@ class CryptoKeys:
                 ft.DataColumn(ft.Text("ID")),
                 ft.DataColumn(ft.Text("Key (hex)")),
                 ft.DataColumn(ft.Text("Copy")),
+                ft.DataColumn(ft.Text("Download")),
                 ft.DataColumn(ft.Text("Delete")),
             ],
             rows=[],
@@ -109,13 +122,53 @@ class CryptoKeys:
             data_row_max_height=48,
         )
 
+        aes_save_picker = ft.FilePicker()
+        self.page.overlay.append(aes_save_picker)
+
+        def _safe_filename_component(s: str) -> str:
+            if not s:
+                return "key"
+            safe = s.replace(" ", "_")
+            for ch in [":", "/", "\\", "\t"]:
+                safe = safe.replace(ch, "_")
+            return safe
+
+        def _save_aes_to_file(hex_key: str, filename: str):
+            plat = self._platform()
+
+            if plat not in ("windows", "linux", "macos"):
+                self._show_not_supported("Downloading files")
+                return
+
+            try:
+
+                def _on_save(e: ft.FilePickerResultEvent):
+                    try:
+                        if e.path:
+                            with open(f"{e.path}.key", "w", encoding="utf-8") as fh:
+                                fh.write(hex_key + "\n")
+                            self.page.open(ft.SnackBar(ft.Text(f"Saved: {e.path}")))
+                    except Exception as err:
+                        self.page.open(ft.SnackBar(ft.Text(f"Save failed: {err}")))
+
+                aes_save_picker.on_result = _on_save
+                aes_save_picker.save_file(
+                    file_name=filename,
+                    file_type=ft.FilePickerFileType.CUSTOM,
+                    allowed_extensions=["key"],
+                )
+
+            except Exception as err:
+                self.page.open(ft.SnackBar(ft.Text(f"Save failed: {err}")))
+
         def refresh():
             cur = self.conn.execute(
-                "SELECT id, UPPER(hex(key_material)) FROM user_aes_keys WHERE username=? ORDER BY id DESC",
+                "SELECT id, UPPER(hex(key_material)), created_at FROM user_aes_keys WHERE username=? ORDER BY id DESC",
                 (self.page.username,),
             )
             rows = []
-            for rid, key_hex in cur.fetchall():
+            for rid, key_hex, created_at in cur.fetchall():
+                created_comp = _safe_filename_component(str(created_at))
                 rows.append(
                     ft.DataRow(
                         cells=[
@@ -141,8 +194,20 @@ class CryptoKeys:
                             ft.DataCell(
                                 IconButton(
                                     self.page,
+                                    icon=ft.Icons.FILE_DOWNLOAD,
+                                    tooltip="Download key (PEM)",
+                                    on_click=lambda _,
+                                    v=key_hex,
+                                    c=created_comp: _save_aes_to_file(
+                                        v, f"aes{len(v) * 4}-{c}"
+                                    ),
+                                )
+                            ),
+                            ft.DataCell(
+                                IconButton(
+                                    self.page,
                                     icon=ft.Icons.DELETE_OUTLINE,
-                                    tooltip="Delete",
+                                    tooltip="Delete key",
                                     on_click=lambda _, rr=rid: delete(rr),
                                     icon_color=ft.Colors.RED,
                                 )
@@ -161,10 +226,12 @@ class CryptoKeys:
         def save(_):
             if not key_field.value:
                 return
+
             try:
                 kb = bytes.fromhex(key_field.value)
             except ValueError:
                 return
+
             exists = self.conn.execute(
                 "SELECT 1 FROM user_aes_keys WHERE username=? AND key_material=?",
                 (self.page.username, kb),
@@ -179,7 +246,7 @@ class CryptoKeys:
 
         def generate(_):
             size = int(mode_dd.value) // 8
-            key_field.value = os.urandom(size).hex().upper()
+            key_field.value = token_hex(size).upper()
             self.page.update()
 
         refresh()
@@ -200,7 +267,7 @@ class CryptoKeys:
 
         content = ft.Column(
             [
-                section_title("Advanced Encryption Standard (AES) Keys"),
+                section_title("AES Key Management"),
                 mode_dd,
                 actions,
                 key_field,
@@ -211,6 +278,7 @@ class CryptoKeys:
             spacing=GAP_MD,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
+
         return ft.Container(vertical_scroll(surface_card(content)), padding=10)
 
     # ---------- RSA ----------
@@ -222,6 +290,7 @@ class CryptoKeys:
             value="2048",
             width=220,
         )
+
         pub_field = ft.TextField(
             label="Public Key (PEM)",
             multiline=True,
@@ -230,6 +299,7 @@ class CryptoKeys:
             read_only=True,
             prefix_icon=ft.Icons.KEY,
         )
+
         priv_field = ft.TextField(
             label="Private Key (PEM)",
             multiline=True,
@@ -247,14 +317,16 @@ class CryptoKeys:
             tooltip="Copy public key",
             on_click=lambda _: self.page.set_clipboard(pub_field.value),
         )
+
         copy_priv = IconButton(
             self.page,
             icon=ft.Icons.COPY_ALL,
             tooltip="Copy private key",
             on_click=lambda _: self.page.set_clipboard(priv_field.value),
         )
+
         toggle_btn = IconButton(
-            self.page, icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide"
+            self.page, icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide Key"
         )
 
         def toggle(_):
@@ -267,6 +339,7 @@ class CryptoKeys:
             self.page.update()
 
         toggle_btn.on_click = toggle
+
         priv_field.suffix = ft.Row([copy_priv, toggle_btn], spacing=4, tight=True)
         pub_field.suffix = copy_pub
 
@@ -277,6 +350,8 @@ class CryptoKeys:
                 ft.DataColumn(ft.Text("Public PEM (preview)")),
                 ft.DataColumn(ft.Text("Copy Pub")),
                 ft.DataColumn(ft.Text("Copy Priv")),
+                ft.DataColumn(ft.Text("Download Pub")),
+                ft.DataColumn(ft.Text("Download Priv")),
                 ft.DataColumn(ft.Text("Delete")),
             ],
             rows=[],
@@ -284,14 +359,55 @@ class CryptoKeys:
             data_row_max_height=52,
         )
 
+        save_picker = ft.FilePicker()
+        self.page.overlay.append(save_picker)
+
+        def _safe_filename_component(s: str) -> str:
+            if not s:
+                return "key"
+            safe = s.replace(" ", "_")
+            for ch in [":", "/", "\\", "\t"]:
+                safe = safe.replace(ch, "_")
+            return safe
+
+        def _save_pem_to_file(pem: str, filename: str):
+            plat = self._platform()
+
+            if plat in (ft.PagePlatform.WEB, ft.PagePlatform.MOBILE):
+                self._show_not_supported("Downloading files")
+                return
+
+            try:
+
+                def _on_save(e: ft.FilePickerResultEvent):
+                    try:
+                        if e.path:
+                            with open(f"{e.path}.pem", "w", encoding="utf-8") as fh:
+                                fh.write(pem)
+                            self.page.open(ft.SnackBar(ft.Text(f"Saved: {e.path}")))
+                    except Exception as err:
+                        self.page.open(ft.SnackBar(ft.Text(f"Save failed: {err}")))
+
+                save_picker.on_result = _on_save
+                save_picker.save_file(
+                    file_name=filename,
+                    file_type=ft.FilePickerFileType.CUSTOM,
+                    allowed_extensions=["pem"],
+                )
+
+            except Exception as err:
+                self.page.open(ft.SnackBar(ft.Text(f"Save failed: {err}")))
+
         def refresh():
             cur = self.conn.execute(
-                "SELECT id, bits, public_pem, private_pem FROM user_rsa_keys WHERE username=? ORDER BY id DESC",
+                "SELECT id, bits, public_pem, private_pem, created_at FROM user_rsa_keys WHERE username=? ORDER BY id DESC",
                 (self.page.username,),
             )
             rows = []
-            for rid, bits, pub_pem, priv_pem in cur.fetchall():
+            for rid, bits, pub_pem, priv_pem, created_at in cur.fetchall():
                 preview = pub_pem.splitlines()[1] if pub_pem else ""
+                created_comp = _safe_filename_component(str(created_at))
+
                 rows.append(
                     ft.DataRow(
                         cells=[
@@ -309,7 +425,7 @@ class CryptoKeys:
                                 IconButton(
                                     self.page,
                                     icon=ft.Icons.COPY,
-                                    tooltip="Copy public",
+                                    tooltip="Copy public key",
                                     on_click=lambda _,
                                     v=pub_pem: self.page.set_clipboard(v),
                                 )
@@ -318,7 +434,7 @@ class CryptoKeys:
                                 IconButton(
                                     self.page,
                                     icon=ft.Icons.COPY_ALL,
-                                    tooltip="Copy private",
+                                    tooltip="Copy private key",
                                     on_click=lambda _,
                                     v=priv_pem: self.page.set_clipboard(v),
                                 )
@@ -326,8 +442,32 @@ class CryptoKeys:
                             ft.DataCell(
                                 IconButton(
                                     self.page,
+                                    icon=ft.Icons.FILE_DOWNLOAD,
+                                    tooltip="Download public PEM",
+                                    on_click=lambda _,
+                                    v=pub_pem,
+                                    c=created_comp: _save_pem_to_file(
+                                        v, f"rsa{bits}-{c}.pub"
+                                    ),
+                                )
+                            ),
+                            ft.DataCell(
+                                IconButton(
+                                    self.page,
+                                    icon=ft.Icons.FILE_DOWNLOAD,
+                                    tooltip="Download private PEM",
+                                    on_click=lambda _,
+                                    v=priv_pem,
+                                    c=created_comp: _save_pem_to_file(
+                                        v, f"rsa{bits}-{c}.priv"
+                                    ),
+                                )
+                            ),
+                            ft.DataCell(
+                                IconButton(
+                                    self.page,
                                     icon=ft.Icons.DELETE_OUTLINE,
-                                    tooltip="Delete",
+                                    tooltip="Delete keypair",
                                     on_click=lambda _, rr=rid: delete(rr),
                                     icon_color=ft.Colors.RED,
                                 )
@@ -358,7 +498,9 @@ class CryptoKeys:
         def save(_):
             if not pub_field.value or not priv_field.value:
                 return
+
             bits = int(size_dd.value)
+
             exists = self.conn.execute(
                 "SELECT 1 FROM user_rsa_keys WHERE username=? AND public_pem=?",
                 (self.page.username, pub_field.value),
@@ -369,6 +511,7 @@ class CryptoKeys:
                     (self.page.username, bits, pub_field.value, priv_field.value),
                 )
                 self.conn.commit()
+
             refresh()
 
         refresh()
@@ -377,7 +520,7 @@ class CryptoKeys:
             [
                 PrimaryButton(
                     self.page,
-                    "Generate RSA Pair",
+                    "Generate RSA Keypair",
                     icon=ft.Icons.GENERATING_TOKENS,
                     on_click=generate,
                 ),
@@ -402,4 +545,25 @@ class CryptoKeys:
             spacing=GAP_MD,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
+
         return ft.Container(vertical_scroll(surface_card(content)), padding=10)
+
+    # -------- Utilities ---------
+    def _platform(self):
+        try:
+            if self.page.web:
+                return "web"
+            else:
+                return self.page.platform.name.lower()
+        except Exception:
+            return None
+
+    def _show_not_supported(self, action: str):
+        plat = self._platform()
+        self.page.open(
+            ft.SnackBar(
+                ft.Text(
+                    f"{action} not supported on platform: {plat if plat else 'unknown'}"
+                )
+            )
+        )
