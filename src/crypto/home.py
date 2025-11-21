@@ -1,7 +1,7 @@
 import flet as ft
 
-from .components import PrimaryButton
-from .theme import GAP_MD, PADDING_APP
+from ui.components import PrimaryButton
+from ui.theme import GAP_MD, PADDING_APP
 
 
 class HomePage:

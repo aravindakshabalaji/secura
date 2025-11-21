@@ -1,104 +1,54 @@
-import os.path
+import os
 from secrets import token_bytes
+from typing import Optional
 
 import flet as ft
 from pycrypt.asymmetric import RSAKey
 from pycrypt.symmetric import AES_CTR
 
-from .components import IconButton, PrimaryButton, TonalButton, vertical_scroll
-from .theme import GAP_MD, GAP_SM, section_title, surface_card
+from crypto.base_view import BaseView
+from ui.components import IconButton, PrimaryButton, TonalButton
+from ui.theme import GAP_MD, section_title
 
 
-class RSAEncryptDecrypt:
+class RSAEncryptDecrypt(BaseView):
     def __init__(self, page: ft.Page):
-        self.page = page
+        super().__init__(page)
         self.page.title = "RSA Encrypt / Decrypt | Cryptographic Suite"
-        self.page.scroll = ft.ScrollMode.AUTO
+        self.key_picker = ft.FilePicker()
+        self.file_picker = ft.FilePicker()
+        self.page.overlay.extend([self.key_picker, self.file_picker])
 
-    # -------- View ---------
+    # ---------- Public view ----------
     def view(self) -> ft.View:
-        header = ft.Row(
-            [
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.ARROW_BACK,
-                    tooltip="Go Back",
-                    on_click=lambda _: self.page.go("/crypto"),
-                ),
-                ft.Text(
-                    "🔐 RSA Encrypt / Decrypt",
-                    size=26,
-                    weight=ft.FontWeight.BOLD,
-                ),
-            ],
-            alignment=ft.MainAxisAlignment.START,
-            spacing=GAP_SM,
-        )
+        header = self.render_header("🔐 RSA Encrypt / Decrypt")
 
-        tabs = ft.Tabs(
-            selected_index=0,
-            animation_duration=300,
-            tabs=[
+        tabs = self.render_tabs(
+            [
                 ft.Tab(
                     text="Text Data",
                     icon=ft.Icons.TEXT_FIELDS_OUTLINED,
-                    content=self.text_mode(),
+                    content=self._text_mode(),
                 ),
                 ft.Tab(
                     text="Files",
                     icon=ft.Icons.ATTACH_FILE_ROUNDED,
-                    content=self.file_mode(),
+                    content=self._file_mode(),
                 ),
-            ],
-            expand=1,
+            ]
         )
 
-        return ft.View(
-            route="/crypto/rsa-enc-dec",
-            controls=[
-                ft.Column(
-                    [ft.SafeArea(content=header, top=True), ft.Divider(), tabs],
-                    expand=True,
-                    spacing=GAP_MD,
-                )
-            ],
-            padding=ft.padding.symmetric(horizontal=20, vertical=10),
-        )
+        return self.render_view(header, tabs, "/crypto/rsa-enc-dec")
 
     # ---------- helpers ----------
-    def _paste(self, field: ft.TextField):
-        field.value = self.page.get_clipboard()
-        self.page.update()
-
-    def _platform(self):
-        try:
-            if self.page.web:
-                return "web"
-            else:
-                return self.page.platform.name.lower()
-        except Exception:
-            return None
-
-    def _show_not_supported(self, action: str):
-        plat = self._platform()
-        self.page.open(
-            ft.SnackBar(
-                ft.Text(
-                    f"{action} not supported on platform: {plat if plat else 'unknown'}"
-                )
-            )
-        )
-
-    def _snack(self, text: str):
-        self.page.open(ft.SnackBar(ft.Text(text)))
-        self.page.update()
-
     def _pem_type(self, pem: str) -> tuple[bool, bool]:
         s = (pem or "").upper()
-        return ("PRIVATE KEY" in s) or ("PRIVATE KEY" in s), ("PUBLIC KEY" in s)
+        has_private = "PRIVATE KEY" in s or "ENCRYPTED PRIVATE KEY" in s
+        has_public = "PUBLIC KEY" in s
+        return has_private, has_public
 
-    # ------------- Text Mode -------------
-    def text_mode(self) -> ft.Control:
+    # ---------- Text mode ----------
+    def _text_mode(self):
         key_field = ft.TextField(
             label="Key (PEM)",
             multiline=True,
@@ -107,32 +57,28 @@ class RSAEncryptDecrypt:
             prefix_icon=ft.Icons.KEY,
             hint_text="Public PEM for encrypt / Private PEM for decrypt",
         )
-
         key_field.suffix = ft.Row(
             [
                 IconButton(
                     self.page,
                     icon=ft.Icons.PASTE,
                     tooltip="Paste PEM from clipboard",
-                    on_click=lambda _: self._paste(key_field),
+                    on_click=lambda _: self.paste_field(key_field),
                 ),
                 IconButton(
                     self.page,
                     icon=ft.Icons.FILE_UPLOAD,
                     tooltip="Import PEM file",
                     on_click=lambda _: (
-                        self._show_not_supported("Uploading files")
-                        if self._platform() == "web"
-                        else key_picker.pick_files(allow_multiple=False),
+                        self.show_not_supported("Uploading files")
+                        if self.platform() == "web"
+                        else self.key_picker.pick_files(allow_multiple=False)
                     ),
                 ),
             ],
             spacing=6,
             tight=True,
         )
-
-        key_picker = ft.FilePicker()
-        self.page.overlay.append(key_picker)
 
         def on_key_pick(e: ft.FilePickerResultEvent):
             if e.files:
@@ -146,21 +92,21 @@ class RSAEncryptDecrypt:
                     key_field.error_text = f"Failed to import: {err}"
                     self.page.update()
 
-        key_picker.on_result = on_key_pick
+        self.key_picker.on_result = on_key_pick
 
         input_field = ft.TextField(
             prefix_icon=ft.Icons.INPUT,
-            label="Input (plaintext for encrypt / ciphertext hex for decrypt)",
+            label="Input",
+            hint_text="Plaintext for encrypt / Ciphertext hex for decrypt",
             multiline=True,
             max_lines=6,
             width=500,
         )
-
         input_field.suffix = IconButton(
             self.page,
             icon=ft.Icons.PASTE,
             tooltip="Paste from clipboard",
-            on_click=lambda _: self._paste(input_field),
+            on_click=lambda _: self.paste_field(input_field),
         )
 
         output_field = ft.TextField(
@@ -173,15 +119,7 @@ class RSAEncryptDecrypt:
         )
 
         verify_result = ft.Text("", visible=False)
-
         prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
-
-        def clear_errors():
-            for f in (key_field, input_field, output_field):
-                f.error_text = None
-            verify_result.visible = False
-            verify_result.value = ""
-            self.page.update()
 
         def _validate_key_for_encrypt(pem: str) -> bool:
             if not pem:
@@ -193,14 +131,16 @@ class RSAEncryptDecrypt:
             if not pem:
                 key_field.error_text = "Private key PEM required for decryption"
                 return False
-            has_private, has_public = self._pem_type(pem)
+            has_private, _ = self._pem_type(pem)
             if not has_private:
-                key_field.error_text = "Private key PEM is required for decryption: Public key was provided"
+                key_field.error_text = (
+                    "Private key PEM is required for decryption: Public key provided"
+                )
                 return False
             return True
 
         def encrypt_click(_):
-            clear_errors()
+            self.clear_errors(key_field, input_field, output_field)
             output_field.value = ""
             pem = (key_field.value or "").strip()
             data = input_field.value or ""
@@ -211,9 +151,12 @@ class RSAEncryptDecrypt:
                 input_field.error_text = "Plaintext required for encryption"
                 self.page.update()
                 return
+
             try:
                 bytes.fromhex(data.strip())
-                verify_result.value = "⚠️ Input looks like hex — you are encrypting raw text that looks like hex."
+                verify_result.value = (
+                    "⚠️ Input looks like hex — encrypting raw text that looks like hex."
+                )
                 verify_result.visible = True
             except Exception:
                 pass
@@ -239,7 +182,7 @@ class RSAEncryptDecrypt:
                 self.page.update()
 
         def decrypt_click(_):
-            clear_errors()
+            self.clear_errors(key_field, input_field, output_field)
             output_field.value = ""
             pem = (key_field.value or "").strip()
             data_hex = (input_field.value or "").strip()
@@ -276,22 +219,13 @@ class RSAEncryptDecrypt:
                 prog.visible = False
                 self.page.update()
 
-        def copy_output(_):
-            if output_field.value:
-                self.page.set_clipboard(output_field.value)
-
         def fill_input_from_output(_):
             input_field.value = output_field.value or ""
             self.page.update()
 
         output_field.suffix = ft.Row(
             [
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.COPY,
-                    tooltip="Copy output",
-                    on_click=copy_output,
-                ),
+                self.copy_button(output_field, "output"),
                 IconButton(
                     self.page,
                     icon=ft.Icons.SYNC_ALT,
@@ -321,7 +255,7 @@ class RSAEncryptDecrypt:
             wrap=True,
         )
 
-        content = ft.Column(
+        return self.render_tab(
             [
                 section_title("Text Mode"),
                 key_field,
@@ -340,15 +274,11 @@ class RSAEncryptDecrypt:
                     width=1000,
                 ),
                 ft.Container(verify_result, alignment=ft.alignment.center),
-            ],
-            spacing=GAP_MD,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            ]
         )
 
-        return ft.Container(vertical_scroll(surface_card(content)), padding=10)
-
-    # ------------- File Mode -------------
-    def file_mode(self) -> ft.Control:
+    # ---------- File mode ----------
+    def _file_mode(self) -> ft.Control:
         prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
         selected_file_info = ft.Text("No file selected.", color=ft.Colors.AMBER_700)
 
@@ -366,16 +296,16 @@ class RSAEncryptDecrypt:
                     self.page,
                     icon=ft.Icons.PASTE,
                     tooltip="Paste PEM from clipboard",
-                    on_click=lambda _: self._paste(key_field),
+                    on_click=lambda _: self.paste_field(key_field),
                 ),
                 IconButton(
                     self.page,
                     icon=ft.Icons.FILE_UPLOAD,
                     tooltip="Import PEM file",
                     on_click=lambda _: (
-                        self._show_not_supported("Uploading files")
-                        if self._platform() == "web"
-                        else key_picker.pick_files(allow_multiple=False),
+                        self.show_not_supported("Uploading files")
+                        if self.platform() == "web"
+                        else self.key_picker.pick_files(allow_multiple=False)
                     ),
                 ),
             ],
@@ -383,27 +313,7 @@ class RSAEncryptDecrypt:
             tight=True,
         )
 
-        key_picker = ft.FilePicker()
-        self.page.overlay.append(key_picker)
-
-        def on_key_pick(e: ft.FilePickerResultEvent):
-            if e.files:
-                f = e.files[0]
-                try:
-                    path = f.path or f.name
-                    with open(path, "r", encoding="utf-8") as fh:
-                        key_field.value = fh.read()
-                    self.page.update()
-                except Exception as err:
-                    key_field.error_text = f"Failed to import: {err}"
-                    self.page.update()
-
-        key_picker.on_result = on_key_pick
-
-        file_picker = ft.FilePicker()
-        self.page.overlay.append(file_picker)
-
-        selected_path = None
+        selected_path: Optional[str] = None
 
         def on_file_pick(e: ft.FilePickerResultEvent):
             nonlocal selected_path
@@ -419,13 +329,10 @@ class RSAEncryptDecrypt:
                 selected_file_info.color = ft.Colors.RED_ACCENT_400
             self.page.update()
 
-        file_picker.on_result = on_file_pick
+        self.file_picker.on_result = on_file_pick
 
-        # File format (binary):
-        # [2 bytes: len_enc_session_key][enc_session_key][8 bytes nonce][ciphertext...]
         def handle_file(action: str):
             nonlocal selected_path
-
             key_field.error_text = None
             selected_file_info.color = ft.Colors.AMBER_700
 
@@ -434,6 +341,7 @@ class RSAEncryptDecrypt:
                 selected_file_info.color = ft.Colors.RED_400
                 self.page.update()
                 return
+
             pem = (key_field.value or "").strip()
             if not pem:
                 selected_file_info.value = "Enter a PEM key."
@@ -442,14 +350,17 @@ class RSAEncryptDecrypt:
                 return
 
             has_private, has_public = self._pem_type(pem)
-            if not has_private:
-                key_field.error_text = "Private key PEM required for file decryption: Public key was provided"
+            if action == "decrypt" and not has_private:
+                key_field.error_text = (
+                    "Private key PEM required for file decryption: Public key provided"
+                )
                 self.page.update()
                 return
 
             try:
                 prog.visible = True
                 self.page.update()
+
                 if action == "encrypt":
                     with open(selected_path, "rb") as f:
                         body = f.read()
@@ -527,11 +438,11 @@ class RSAEncryptDecrypt:
                         self.page.update()
                         return
 
-                    if selected_path.endswith(".enc"):
-                        out_name = selected_path[:-4]
-                    else:
-                        out_name = selected_path + ".dec"
-
+                    out_name = (
+                        selected_path[:-4]
+                        if selected_path.endswith(".enc")
+                        else selected_path + ".dec"
+                    )
                     with open(out_name, "wb") as out:
                         out.write(body)
 
@@ -551,9 +462,9 @@ class RSAEncryptDecrypt:
                     "Select File",
                     icon=ft.Icons.FOLDER_OPEN,
                     on_click=lambda _: (
-                        self._show_not_supported("Uploading files")
-                        if self._platform() == "web"
-                        else file_picker.pick_files(allow_multiple=False),
+                        self.show_not_supported("Uploading files")
+                        if self.platform() == "web"
+                        else self.file_picker.pick_files(allow_multiple=False)
                     ),
                 ),
                 PrimaryButton(
@@ -575,7 +486,7 @@ class RSAEncryptDecrypt:
             wrap=True,
         )
 
-        content = ft.Column(
+        return self.render_tab(
             [
                 section_title("File Mode"),
                 key_field,
@@ -591,9 +502,5 @@ class RSAEncryptDecrypt:
                     elevation=2,
                     width=700,
                 ),
-            ],
-            spacing=GAP_MD,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            ]
         )
-
-        return ft.Container(vertical_scroll(surface_card(content)), padding=10)

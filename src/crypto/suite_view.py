@@ -1,8 +1,7 @@
 import flet as ft
 
 from ui.components import IconButton
-
-from .theme import GAP_MD, PADDING_APP
+from ui.theme import GAP_MD, PADDING_APP
 
 
 class CryptoSuite:

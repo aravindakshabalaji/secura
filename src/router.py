@@ -1,11 +1,11 @@
 import flet as ft
 
-from ui.crypto_encrypt_decrypt import AESEncryptDecrypt
-from ui.crypto_keys import KeyManagement
-from ui.crypto_rsa import RSAEncryptDecrypt
-from ui.crypto_sign_verify import RSASignVerify
-from ui.crypto_suite import CryptoSuite
-from ui.home import HomePage
+from crypto.aes_view import AESEncryptDecrypt
+from crypto.keys_view import KeyManagement
+from crypto.rsa_view import RSAEncryptDecrypt
+from crypto.sign_view import RSASignVerify
+from crypto.suite_view import CryptoSuite
+from crypto.home import HomePage
 
 ROUTES = {
     "/": HomePage,

@@ -3,66 +3,36 @@ from secrets import token_hex
 import flet as ft
 from pycrypt.asymmetric import RSAKey
 
-from .components import (
-    IconButton,
-    PrimaryButton,
-    TonalButton,
-    scrollable_table,
-    vertical_scroll,
-)
-from .theme import GAP_MD, GAP_SM, section_title, subsection_title, surface_card
+from crypto.base_view import BaseView
+from ui.components import IconButton, PrimaryButton, TonalButton, vertical_scroll
+from ui.theme import GAP_MD, section_title, subsection_title
 
 
-class KeyManagement:
+class KeyManagement(BaseView):
     def __init__(self, page: ft.Page):
-        self.page = page
+        super().__init__(page)
         self.page.title = "Key Management | Cryptographic Suite"
-        self.page.scroll = ft.ScrollMode.AUTO
-        self.conn = page.conn
+        self.conn = getattr(page, "conn", None)
 
-    # ---------- View ----------
-    def view(self) -> ft.View:
-        header = ft.Row(
+    # ---------- Public view ----------
+    def view(self):
+        header = self.render_header("🔑 Key Management")
+
+        tabs = self.render_tabs(
             [
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.ARROW_BACK,
-                    tooltip="Go Back",
-                    on_click=lambda _: self.page.go("/crypto"),
-                ),
-                ft.Text("🔑 Key Management", size=26, weight=ft.FontWeight.BOLD),
-            ],
-            alignment=ft.MainAxisAlignment.START,
-            spacing=GAP_SM,
-        )
-
-        tabs = ft.Tabs(
-            selected_index=0,
-            animation_duration=300,
-            tabs=[
-                ft.Tab(text="AES", content=self.aes_tab()),
-                ft.Tab(text="RSA", content=self.rsa_tab()),
+                ft.Tab(text="AES", content=self._aes_tab()),
+                ft.Tab(text="RSA", content=self._rsa_tab()),
                 ft.Tab(
-                    text="DH", content=ft.Container(ft.Text("Coming soon"), padding=20)
+                    text="DH",
+                    content=ft.Container(ft.Text("Coming soon"), padding=20),
                 ),
-            ],
-            expand=1,
+            ]
         )
 
-        return ft.View(
-            route="/crypto/keys",
-            controls=[
-                ft.Column(
-                    [ft.SafeArea(content=header, top=True), ft.Divider(), tabs],
-                    expand=True,
-                    spacing=GAP_MD,
-                )
-            ],
-            padding=ft.padding.symmetric(horizontal=20, vertical=10),
-        )
+        return self.render_view(header, tabs, "/crypto/keys")
 
     # ---------- AES ----------
-    def aes_tab(self) -> ft.Control:
+    def _aes_tab(self):
         mode_dd = ft.Dropdown(
             label="AES Key Size",
             options=[
@@ -98,11 +68,7 @@ class KeyManagement:
 
         key_field.suffix = ft.Row(
             [
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.COPY,
-                    on_click=lambda _: self.page.set_clipboard(key_field.value),
-                ),
+                self.copy_button(key_field, "key"),
                 toggle_btn,
             ],
             spacing=4,
@@ -134,10 +100,10 @@ class KeyManagement:
             return safe
 
         def _save_aes_to_file(hex_key: str, filename: str):
-            plat = self._platform()
+            plat = self.platform()
 
             if plat not in ("windows", "linux", "macos"):
-                self._show_not_supported("Downloading files")
+                self.show_not_supported("Downloading files")
                 return
 
             try:
@@ -147,9 +113,9 @@ class KeyManagement:
                         if e.path:
                             with open(f"{e.path}.key", "w", encoding="utf-8") as fh:
                                 fh.write(hex_key + "\n")
-                            self.page.open(ft.SnackBar(ft.Text(f"Saved: {e.path}")))
+                            self.snack(f"Saved: {e.path}.key")
                     except Exception as err:
-                        self.page.open(ft.SnackBar(ft.Text(f"Save failed: {err}")))
+                        self.snack(f"Save failed: {err}")
 
                 aes_save_picker.on_result = _on_save
                 aes_save_picker.save_file(
@@ -159,11 +125,15 @@ class KeyManagement:
                 )
 
             except Exception as err:
-                self.page.open(ft.SnackBar(ft.Text(f"Save failed: {err}")))
+                self.snack(f"Save failed: {err}")
 
         def refresh():
+            if not self.conn:
+                return
+
             cur = self.conn.execute(
-                "SELECT id, UPPER(hex(key_material)), created_at FROM user_aes_keys WHERE username=? ORDER BY id DESC",
+                "SELECT id, UPPER(hex(key_material)), created_at "
+                "FROM user_aes_keys WHERE username=? ORDER BY id DESC",
                 (self.page.username,),
             )
             rows = []
@@ -182,20 +152,12 @@ class KeyManagement:
                                     width=520,
                                 )
                             ),
-                            ft.DataCell(
-                                IconButton(
-                                    self.page,
-                                    icon=ft.Icons.COPY,
-                                    tooltip="Copy",
-                                    on_click=lambda _,
-                                    v=key_hex: self.page.set_clipboard(v),
-                                )
-                            ),
+                            ft.DataCell(self.copy_button(key_hex, "key")),
                             ft.DataCell(
                                 IconButton(
                                     self.page,
                                     icon=ft.Icons.FILE_DOWNLOAD,
-                                    tooltip="Download key (PEM)",
+                                    tooltip="Download key",
                                     on_click=lambda _,
                                     v=key_hex,
                                     c=created_comp: _save_aes_to_file(
@@ -219,12 +181,14 @@ class KeyManagement:
             self.page.update()
 
         def delete(row_id: int):
+            if not self.conn:
+                return
             self.conn.execute("DELETE FROM user_aes_keys WHERE id=?", (row_id,))
             self.conn.commit()
             refresh()
 
         def save(_):
-            if not key_field.value:
+            if not key_field.value or not self.conn:
                 return
 
             try:
@@ -265,7 +229,7 @@ class KeyManagement:
             alignment=ft.MainAxisAlignment.CENTER,
         )
 
-        content = ft.Column(
+        return self.render_tab(
             [
                 section_title("AES Key Management"),
                 mode_dd,
@@ -273,16 +237,12 @@ class KeyManagement:
                 key_field,
                 ft.Divider(),
                 subsection_title("Saved AES keys"),
-                scrollable_table(keys_table),
-            ],
-            spacing=GAP_MD,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                vertical_scroll(keys_table),
+            ]
         )
 
-        return ft.Container(vertical_scroll(surface_card(content)), padding=10)
-
     # ---------- RSA ----------
-    def rsa_tab(self) -> ft.Control:
+    def _rsa_tab(self) -> ft.Control:
         sizes = ["1024", "2048", "3072", "4096"]
         size_dd = ft.Dropdown(
             label="RSA Key Size",
@@ -295,7 +255,7 @@ class KeyManagement:
             label="Public Key (PEM)",
             multiline=True,
             max_lines=6,
-            width=800,
+            width=500,
             read_only=True,
             prefix_icon=ft.Icons.KEY,
         )
@@ -304,26 +264,16 @@ class KeyManagement:
             label="Private Key (PEM)",
             multiline=True,
             max_lines=6,
-            width=800,
+            width=500,
             read_only=True,
             password=True,
             can_reveal_password=False,
             prefix_icon=ft.Icons.LOCK,
         )
 
-        copy_pub = IconButton(
-            self.page,
-            icon=ft.Icons.COPY,
-            tooltip="Copy public key",
-            on_click=lambda _: self.page.set_clipboard(pub_field.value),
-        )
+        copy_pub = self.copy_button(pub_field, "public key")
 
-        copy_priv = IconButton(
-            self.page,
-            icon=ft.Icons.COPY_ALL,
-            tooltip="Copy private key",
-            on_click=lambda _: self.page.set_clipboard(priv_field.value),
-        )
+        copy_priv = self.copy_button(priv_field, "private key", ft.Icons.COPY_ALL)
 
         toggle_btn = IconButton(
             self.page, icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide Key"
@@ -371,10 +321,10 @@ class KeyManagement:
             return safe
 
         def _save_pem_to_file(pem: str, filename: str):
-            plat = self._platform()
+            plat = self.platform()
 
             if plat in ("web", "mobile"):
-                self._show_not_supported("Downloading files")
+                self.show_not_supported("Downloading files")
                 return
 
             try:
@@ -384,9 +334,9 @@ class KeyManagement:
                         if e.path:
                             with open(f"{e.path}.pem", "w", encoding="utf-8") as fh:
                                 fh.write(pem)
-                            self.page.open(ft.SnackBar(ft.Text(f"Saved: {e.path}")))
+                            self.snack(f"Saved: {e.path}.pem")
                     except Exception as err:
-                        self.page.open(ft.SnackBar(ft.Text(f"Save failed: {err}")))
+                        self.snack(f"Save failed: {err}")
 
                 save_picker.on_result = _on_save
                 save_picker.save_file(
@@ -396,11 +346,15 @@ class KeyManagement:
                 )
 
             except Exception as err:
-                self.page.open(ft.SnackBar(ft.Text(f"Save failed: {err}")))
+                self.snack(f"Save failed: {err}")
 
         def refresh():
+            if not self.conn:
+                return
+
             cur = self.conn.execute(
-                "SELECT id, bits, public_pem, private_pem, created_at FROM user_rsa_keys WHERE username=? ORDER BY id DESC",
+                "SELECT id, bits, public_pem, private_pem, created_at "
+                "FROM user_rsa_keys WHERE username=? ORDER BY id DESC",
                 (self.page.username,),
             )
             rows = []
@@ -421,22 +375,10 @@ class KeyManagement:
                                     width=520,
                                 )
                             ),
+                            ft.DataCell(self.copy_button(pub_pem, "public key")),
                             ft.DataCell(
-                                IconButton(
-                                    self.page,
-                                    icon=ft.Icons.COPY,
-                                    tooltip="Copy public key",
-                                    on_click=lambda _,
-                                    v=pub_pem: self.page.set_clipboard(v),
-                                )
-                            ),
-                            ft.DataCell(
-                                IconButton(
-                                    self.page,
-                                    icon=ft.Icons.COPY_ALL,
-                                    tooltip="Copy private key",
-                                    on_click=lambda _,
-                                    v=priv_pem: self.page.set_clipboard(v),
+                                self.copy_button(
+                                    priv_pem, "private key", ft.Icons.COPY_ALL
                                 )
                             ),
                             ft.DataCell(
@@ -479,6 +421,8 @@ class KeyManagement:
             self.page.update()
 
         def delete(row_id: int):
+            if not self.conn:
+                return
             self.conn.execute("DELETE FROM user_rsa_keys WHERE id=?", (row_id,))
             self.conn.commit()
             refresh()
@@ -496,7 +440,7 @@ class KeyManagement:
             self.page.update()
 
         def save(_):
-            if not pub_field.value or not priv_field.value:
+            if not pub_field.value or not priv_field.value or not self.conn:
                 return
 
             bits = int(size_dd.value)
@@ -507,7 +451,8 @@ class KeyManagement:
             ).fetchone()
             if not exists:
                 self.conn.execute(
-                    "INSERT INTO user_rsa_keys(username, bits, public_pem, private_pem) VALUES(?, ?, ?, ?)",
+                    "INSERT INTO user_rsa_keys(username, bits, public_pem, private_pem) "
+                    "VALUES(?, ?, ?, ?)",
                     (self.page.username, bits, pub_field.value, priv_field.value),
                 )
                 self.conn.commit()
@@ -531,39 +476,26 @@ class KeyManagement:
             alignment=ft.MainAxisAlignment.CENTER,
         )
 
-        content = ft.Column(
+        return self.render_tab(
             [
                 section_title("RSA Key Management"),
                 size_dd,
                 actions,
-                pub_field,
-                priv_field,
+                ft.ResponsiveRow(
+                    [
+                        ft.Container(
+                            pub_field, alignment=ft.alignment.center, col={"sm": 6}
+                        ),
+                        ft.Container(
+                            priv_field, alignment=ft.alignment.center, col={"sm": 6}
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=12,
+                    width=1000,
+                ),
                 ft.Divider(),
                 subsection_title("Saved RSA keys"),
-                scrollable_table(rsa_table),
-            ],
-            spacing=GAP_MD,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        )
-
-        return ft.Container(vertical_scroll(surface_card(content)), padding=10)
-
-    # -------- Utilities ---------
-    def _platform(self):
-        try:
-            if self.page.web:
-                return "web"
-            else:
-                return self.page.platform.name.lower()
-        except Exception:
-            return None
-
-    def _show_not_supported(self, action: str):
-        plat = self._platform()
-        self.page.open(
-            ft.SnackBar(
-                ft.Text(
-                    f"{action} not supported on platform: {plat if plat else 'unknown'}"
-                )
-            )
+                vertical_scroll(rsa_table),
+            ]
         )
