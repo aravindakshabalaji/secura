@@ -64,18 +64,46 @@ class RSASignVerify:
             padding=ft.padding.symmetric(horizontal=20, vertical=10),
         )
 
-    # ---------- Text Mode ----------
-    def text_mode(self) -> ft.Control:
-        op_dd = ft.Dropdown(
-            label="Operation",
-            options=[
-                ft.DropdownOption(key="sign", text="Sign (private key)"),
-                ft.DropdownOption(key="verify", text="Verify (public key)"),
-            ],
-            value="sign",
-            width=300,
+    # ---------- helpers ----------
+    def _paste(self, field: ft.TextField):
+        field.value = self.page.get_clipboard()
+        self.page.update()
+
+    def _platform(self):
+        try:
+            if self.page.web:
+                return "web"
+            else:
+                return self.page.platform.name.lower()
+        except Exception:
+            return None
+
+    def _show_not_supported(self, action: str):
+        plat = self._platform()
+        self.page.open(
+            ft.SnackBar(
+                ft.Text(
+                    f"{action} not supported on platform: {plat if plat else 'unknown'}"
+                )
+            )
         )
 
+    def _snack(self, text: str):
+        self.page.open(ft.SnackBar(ft.Text(text)))
+        self.page.update()
+
+    def _pem_type(self, pem: str) -> tuple[bool, bool]:
+        """
+        Lightweight PEM content test: returns (has_private, has_public).
+        Real parsing still happens via RSAKey.import_key().
+        """
+        s = (pem or "").upper()
+        has_private = "PRIVATE KEY" in s or "ENCRYPTED PRIVATE KEY" in s
+        has_public = "PUBLIC KEY" in s
+        return has_private, has_public
+
+    # ---------- Text Mode ----------
+    def text_mode(self) -> ft.Control:
         key_field = ft.TextField(
             label="Key (PEM)",
             multiline=True,
@@ -133,11 +161,17 @@ class RSASignVerify:
             width=820,
         )
 
-        input_field.suffix = IconButton(
-            self.page,
-            icon=ft.Icons.PASTE,
-            tooltip="Paste signature from clipboard",
-            on_click=lambda _: self._paste(input_field),
+        input_field.suffix = ft.Row(
+            [
+                IconButton(
+                    self.page,
+                    icon=ft.Icons.PASTE,
+                    tooltip="Paste message from clipboard",
+                    on_click=lambda _: self._paste(input_field),
+                )
+            ],
+            spacing=6,
+            tight=True,
         )
 
         signature_field = ft.TextField(
@@ -146,10 +180,36 @@ class RSASignVerify:
             multiline=True,
             max_lines=6,
             width=820,
-            read_only=True,
+            read_only=False,
+        )
+
+        # signature suffix: both paste and copy for convenience
+        def copy_signature(_):
+            if signature_field.value:
+                self.page.set_clipboard(signature_field.value)
+
+        signature_field.suffix = ft.Row(
+            [
+                IconButton(
+                    self.page,
+                    icon=ft.Icons.PASTE,
+                    tooltip="Paste signature from clipboard",
+                    on_click=lambda _: self._paste(signature_field),
+                ),
+                IconButton(
+                    self.page,
+                    icon=ft.Icons.COPY,
+                    tooltip="Copy signature",
+                    on_click=copy_signature,
+                ),
+            ],
+            spacing=6,
+            tight=True,
         )
 
         verify_result = ft.Text("", visible=False)
+
+        prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
 
         def clear_errors():
             for f in (key_field, input_field, signature_field):
@@ -174,29 +234,45 @@ class RSASignVerify:
                 self.page.update()
                 return
 
-            try:
-                key = RSAKey.import_key(pem)
-            except Exception as err:
-                key_field.error_text = f"Invalid PEM: {err}"
-                self.page.update()
-                return
-
-            if key.d is None:
-                key_field.error_text = "Private key required to sign"
+            has_private, has_public = self._pem_type(pem)
+            if has_public:
+                key_field.error_text = (
+                    "Private key PEM required for signing: Public key was provided"
+                )
                 self.page.update()
                 return
 
             try:
-                sig = key.pss_sign(msg)
-                signature_field.value = sig.hex().upper()
+                prog.visible = True
+                self.page.update()
+                try:
+                    key = RSAKey.import_key(pem)
+                except Exception as err:
+                    key_field.error_text = f"Invalid PEM: {err}"
+                    return
+
+                if key.d is None:
+                    key_field.error_text = "Private key required for signing"
+                    return
+
+                try:
+                    sig = key.pss_sign(msg)
+                    signature_field.value = sig.hex().upper()
+
+                    verify_result.visible = True
+                    verify_result.value = "✅ Message signed"
+                    verify_result.color = ft.Colors.GREEN
+                except Exception as err:
+                    signature_field.error_text = f"Error signing: {err}"
             except Exception as err:
-                signature_field.value = f"Error: {err}"
-            self.page.update()
+                signature_field.error_text = f"Error: {err}"
+            finally:
+                prog.visible = False
+                self.page.update()
 
         def verify_click(_):
             clear_errors()
 
-            signature_field.error_text = None
             pem = (key_field.value or "").strip()
             msg = (input_field.value or "").encode()
             sig_hex = (signature_field.value or "").strip()
@@ -221,56 +297,39 @@ class RSASignVerify:
                 self.page.update()
                 return
 
-            try:
-                key = RSAKey.import_key(pem)
-            except Exception as err:
-                key_field.error_text = f"Invalid PEM: {err}"
+            has_private, has_public = self._pem_type(pem)
+            if not has_public and not has_private:
+                key_field.error_text = "Valid Public key PEM required for verification"
                 self.page.update()
                 return
 
             try:
-                ok = key.pss_verify(msg, sig)
-                verify_result.visible = True
-                verify_result.value = (
-                    "✅ Signature valid" if ok else "❌ Signature invalid"
-                )
-                verify_result.color = ft.Colors.GREEN if ok else ft.Colors.RED
+                prog.visible = True
+                self.page.update()
+                try:
+                    key = RSAKey.import_key(pem)
+                except Exception as err:
+                    key_field.error_text = f"Invalid PEM: {err}"
+                    return
+
+                try:
+                    ok = key.pss_verify(msg, sig)
+                    verify_result.visible = True
+                    verify_result.value = (
+                        "✅ Signature valid" if ok else "❌ Signature invalid"
+                    )
+                    verify_result.color = ft.Colors.GREEN if ok else ft.Colors.RED
+                except Exception as err:
+                    verify_result.visible = True
+                    verify_result.value = f"❌ Verification error: {err}"
+                    verify_result.color = ft.Colors.RED
             except Exception as err:
                 verify_result.visible = True
-                verify_result.value = f"❌ Verification error: {err}"
+                verify_result.value = f"❌ Error: {err}"
                 verify_result.color = ft.Colors.RED
-            self.page.update()
-
-        def update_op(_=None):
-            m = op_dd.value
-            if m == "sign":
-                signature_field.read_only = True
-                signature_field.label = "Signature (hex) — produced by signing"
-
-                def copy_signature(_):
-                    if signature_field.value:
-                        self.page.set_clipboard(signature_field.value)
-
-                signature_field.suffix = IconButton(
-                    self.page,
-                    icon=ft.Icons.COPY,
-                    tooltip="Copy",
-                    on_click=copy_signature,
-                )
-            else:
-                signature_field.read_only = False
-                signature_field.label = "Signature (hex) — paste to verify"
-
-                signature_field.suffix = IconButton(
-                    self.page,
-                    icon=ft.Icons.PASTE,
-                    tooltip="Paste signature from clipboard",
-                    on_click=lambda _: self._paste(signature_field),
-                )
-            self.page.update()
-
-        op_dd.on_change = update_op
-        update_op()
+            finally:
+                prog.visible = False
+                self.page.update()
 
         buttons = ft.Row(
             [
@@ -280,6 +339,7 @@ class RSASignVerify:
                 TonalButton(
                     self.page, "Verify", icon=ft.Icons.CHECK, on_click=verify_click
                 ),
+                prog,
             ],
             spacing=GAP_MD,
             alignment=ft.MainAxisAlignment.CENTER,
@@ -289,7 +349,6 @@ class RSASignVerify:
         content = ft.Column(
             [
                 section_title("Text Mode"),
-                op_dd,
                 buttons,
                 key_field,
                 input_field,
@@ -377,7 +436,10 @@ class RSASignVerify:
         file_picker.on_result = on_file_pick
 
         def handle_file(action: str):
-            self.page.update()
+            nonlocal selected_path
+            # clear previous errors/status
+            key_field.error_text = None
+            selected_file_info.color = ft.Colors.AMBER_700
 
             if not selected_path:
                 selected_file_info.value = "Select a file first."
@@ -392,11 +454,27 @@ class RSASignVerify:
                 self.page.update()
                 return
 
+            has_private, has_public = self._pem_type(pem)
+            if action == "sign" and not has_private:
+                key_field.error_text = "Private key PEM required to sign files (provided PEM looks like public only)"
+                self.page.update()
+                return
+            if action == "verify" and not (has_public or has_private):
+                key_field.error_text = "Public key PEM required to verify files (provided PEM not recognizable)"
+                self.page.update()
+                return
+
             try:
                 with open(selected_path, "rb") as f:
                     data = f.read()
 
-                key = RSAKey.import_key(pem)
+                try:
+                    key = RSAKey.import_key(pem)
+                except Exception as err:
+                    key_field.error_text = f"Invalid PEM: {err}"
+                    self.page.update()
+                    return
+
                 if action == "sign":
                     if key.d is None:
                         selected_file_info.value = "Private key required to sign files."
@@ -404,18 +482,25 @@ class RSASignVerify:
                         self.page.update()
                         return
 
-                    prog.visible = True
-                    self.page.update()
-                    sig = key.pss_sign(data)
-                    out_name = selected_path + ".sig"
-                    with open(out_name, "wb") as out:
-                        out.write(sig)
-
-                    selected_file_info.value = f"✅ Signed. Signature saved: {out_name}"
-                    selected_file_info.color = ft.Colors.BLUE_ACCENT_200
-                    prog.visible = False
-                    self.page.update()
+                    try:
+                        prog.visible = True
+                        self.page.update()
+                        sig = key.pss_sign(data)
+                        out_name = selected_path + ".sig"
+                        with open(out_name, "wb") as out:
+                            out.write(sig)
+                        selected_file_info.value = (
+                            f"✅ Signed. Signature saved: {out_name}"
+                        )
+                        selected_file_info.color = ft.Colors.BLUE_ACCENT_200
+                    except Exception as err:
+                        selected_file_info.value = f"❌ Signing error: {err}"
+                        selected_file_info.color = ft.Colors.RED_400
+                    finally:
+                        prog.visible = False
+                        self.page.update()
                 else:
+                    # verify
                     sig_path = selected_path + ".sig"
                     if not os.path.exists(sig_path):
                         selected_file_info.value = (
@@ -425,19 +510,37 @@ class RSASignVerify:
                         self.page.update()
                         return
 
-                    with open(sig_path, "rb") as s:
-                        sig = s.read()
+                    try:
+                        with open(sig_path, "rb") as s:
+                            sig = s.read()
+                    except Exception as err:
+                        selected_file_info.value = (
+                            f"❌ Could not read signature file: {err}"
+                        )
+                        selected_file_info.color = ft.Colors.RED_400
+                        self.page.update()
+                        return
 
-                    ok = key.pss_verify(data, sig)
-                    selected_file_info.value = (
-                        "✅ Signature valid" if ok else "❌ Signature invalid"
-                    )
-                    selected_file_info.color = ft.Colors.GREEN if ok else ft.Colors.RED
+                    try:
+                        prog.visible = True
+                        self.page.update()
+                        ok = key.pss_verify(data, sig)
+                        selected_file_info.value = (
+                            "✅ Signature valid" if ok else "❌ Signature invalid"
+                        )
+                        selected_file_info.color = (
+                            ft.Colors.GREEN if ok else ft.Colors.RED
+                        )
+                    except Exception as err:
+                        selected_file_info.value = f"❌ Verification error: {err}"
+                        selected_file_info.color = ft.Colors.RED_400
+                    finally:
+                        prog.visible = False
+                        self.page.update()
             except Exception as err:
                 selected_file_info.value = f"❌ Error: {err}"
                 selected_file_info.color = ft.Colors.RED_400
-
-            self.page.update()
+                self.page.update()
 
         buttons = ft.Row(
             [
@@ -491,27 +594,3 @@ class RSASignVerify:
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
         return ft.Container(vertical_scroll(surface_card(content)), padding=10)
-
-    # ---------- Utilities ----------
-    def _paste(self, field: ft.TextField):
-        field.value = self.page.get_clipboard()
-        self.page.update()
-
-    def _platform(self):
-        try:
-            if self.page.web:
-                return "web"
-            else:
-                return self.page.platform.name.lower()
-        except Exception:
-            return None
-
-    def _show_not_supported(self, action: str):
-        plat = self._platform()
-        self.page.open(
-            ft.SnackBar(
-                ft.Text(
-                    f"{action} not supported on platform: {plat if plat else 'unknown'}"
-                )
-            )
-        )

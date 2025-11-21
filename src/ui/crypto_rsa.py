@@ -65,18 +65,40 @@ class RSAEncryptDecrypt:
             padding=ft.padding.symmetric(horizontal=20, vertical=10),
         )
 
-    # ------------- Text Mode -------------
-    def text_mode(self) -> ft.Control:
-        op_dd = ft.Dropdown(
-            label="Operation",
-            options=[
-                ft.DropdownOption(key="encrypt", text="Encrypt (public key)"),
-                ft.DropdownOption(key="decrypt", text="Decrypt (private key)"),
-            ],
-            value="encrypt",
-            width=300,
+    # ---------- helpers ----------
+    def _paste(self, field: ft.TextField):
+        field.value = self.page.get_clipboard()
+        self.page.update()
+
+    def _platform(self):
+        try:
+            if self.page.web:
+                return "web"
+            else:
+                return self.page.platform.name.lower()
+        except Exception:
+            return None
+
+    def _show_not_supported(self, action: str):
+        plat = self._platform()
+        self.page.open(
+            ft.SnackBar(
+                ft.Text(
+                    f"{action} not supported on platform: {plat if plat else 'unknown'}"
+                )
+            )
         )
 
+    def _snack(self, text: str):
+        self.page.open(ft.SnackBar(ft.Text(text)))
+        self.page.update()
+
+    def _pem_type(self, pem: str) -> tuple[bool, bool]:
+        s = (pem or "").upper()
+        return ("PRIVATE KEY" in s) or ("PRIVATE KEY" in s), ("PUBLIC KEY" in s)
+
+    # ------------- Text Mode -------------
+    def text_mode(self) -> ft.Control:
         key_field = ft.TextField(
             label="Key (PEM)",
             multiline=True,
@@ -152,6 +174,8 @@ class RSAEncryptDecrypt:
 
         verify_result = ft.Text("", visible=False)
 
+        prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
+
         def clear_errors():
             for f in (key_field, input_field, output_field):
                 f.error_text = None
@@ -159,29 +183,57 @@ class RSAEncryptDecrypt:
             verify_result.value = ""
             self.page.update()
 
-        prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
+        def _validate_key_for_encrypt(pem: str) -> bool:
+            if not pem:
+                key_field.error_text = "Public key PEM required for encryption"
+                return False
+            return True
+
+        def _validate_key_for_decrypt(pem: str) -> bool:
+            if not pem:
+                key_field.error_text = "Private key PEM required for decryption"
+                return False
+            has_private, has_public = self._pem_type(pem)
+            if not has_private:
+                key_field.error_text = "Private key PEM is required for decryption: Public key was provided"
+                return False
+            return True
 
         def encrypt_click(_):
             clear_errors()
             output_field.value = ""
             pem = (key_field.value or "").strip()
-            msg = (input_field.value or "").encode()
-            if not pem:
-                key_field.error_text = "Public key PEM required for encryption"
+            data = input_field.value or ""
+            if not _validate_key_for_encrypt(pem):
                 self.page.update()
                 return
-            if not msg:
-                input_field.error_text = "Message required"
+            if not data:
+                input_field.error_text = "Plaintext required for encryption"
                 self.page.update()
                 return
             try:
+                bytes.fromhex(data.strip())
+                verify_result.value = "⚠️ Input looks like hex — you are encrypting raw text that looks like hex."
+                verify_result.visible = True
+            except Exception:
+                pass
+
+            try:
                 prog.visible = True
                 self.page.update()
-                key = RSAKey.import_key(pem)
-                ct = key.oaep_encrypt(msg)
+                try:
+                    key = RSAKey.import_key(pem)
+                except Exception as e:
+                    key_field.error_text = f"Invalid public key PEM: {e}"
+                    return
+                try:
+                    ct = key.oaep_encrypt(data.encode())
+                except Exception as e:
+                    output_field.error_text = f"Error encrypting: {e}"
+                    return
                 output_field.value = ct.hex().upper()
             except Exception as err:
-                output_field.value = f"Error: {err}"
+                output_field.error_text = f"Error: {err}"
             finally:
                 prog.visible = False
                 self.page.update()
@@ -191,8 +243,7 @@ class RSAEncryptDecrypt:
             output_field.value = ""
             pem = (key_field.value or "").strip()
             data_hex = (input_field.value or "").strip()
-            if not pem:
-                key_field.error_text = "Private key PEM required for decryption"
+            if not _validate_key_for_decrypt(pem):
                 self.page.update()
                 return
             if not data_hex:
@@ -208,57 +259,49 @@ class RSAEncryptDecrypt:
             try:
                 prog.visible = True
                 self.page.update()
-                key = RSAKey.import_key(pem)
-                pt = key.oaep_decrypt(ct)
+                try:
+                    key = RSAKey.import_key(pem)
+                except Exception as e:
+                    key_field.error_text = f"Invalid private key PEM: {e}"
+                    return
+                try:
+                    pt = key.oaep_decrypt(ct)
+                except Exception as e:
+                    output_field.error_text = f"Decryption failed: {e}"
+                    return
                 output_field.value = pt.decode(errors="replace")
             except Exception as err:
-                output_field.value = f"Error: {err}"
+                output_field.error_text = f"Error: {err}"
             finally:
                 prog.visible = False
                 self.page.update()
 
-        def update_op(_=None):
-            m = op_dd.value
-            if m == "encrypt":
-                input_field.label = "Input (plaintext to encrypt)"
-                output_field.label = "Output (ciphertext hex)"
-                output_field.read_only = True
-                output_field.suffix = ft.Row(
-                    [
-                        IconButton(
-                            self.page,
-                            icon=ft.Icons.COPY,
-                            tooltip="Copy output",
-                            on_click=lambda _: self.page.set_clipboard(
-                                output_field.value
-                            ),
-                        )
-                    ],
-                    spacing=4,
-                    tight=True,
-                )
-            else:
-                input_field.label = "Input (ciphertext hex to decrypt)"
-                output_field.label = "Output (plaintext)"
-                output_field.read_only = True
-                output_field.suffix = ft.Row(
-                    [
-                        IconButton(
-                            self.page,
-                            icon=ft.Icons.COPY,
-                            tooltip="Copy output",
-                            on_click=lambda _: self.page.set_clipboard(
-                                output_field.value
-                            ),
-                        )
-                    ],
-                    spacing=4,
-                    tight=True,
-                )
+        def copy_output(_):
+            if output_field.value:
+                self.page.set_clipboard(output_field.value)
+
+        def fill_input_from_output(_):
+            input_field.value = output_field.value or ""
             self.page.update()
 
-        op_dd.on_change = update_op
-        update_op()
+        output_field.suffix = ft.Row(
+            [
+                IconButton(
+                    self.page,
+                    icon=ft.Icons.COPY,
+                    tooltip="Copy output",
+                    on_click=copy_output,
+                ),
+                IconButton(
+                    self.page,
+                    icon=ft.Icons.SYNC_ALT,
+                    tooltip="Fill input with output",
+                    on_click=fill_input_from_output,
+                ),
+            ],
+            spacing=6,
+            tight=True,
+        )
 
         buttons = ft.Row(
             [
@@ -281,9 +324,8 @@ class RSAEncryptDecrypt:
         content = ft.Column(
             [
                 section_title("Text Mode"),
-                op_dd,
-                buttons,
                 key_field,
+                buttons,
                 ft.ResponsiveRow(
                     [
                         ft.Container(
@@ -383,6 +425,10 @@ class RSAEncryptDecrypt:
         # [2 bytes: len_enc_session_key][enc_session_key][8 bytes nonce][ciphertext...]
         def handle_file(action: str):
             nonlocal selected_path
+
+            key_field.error_text = None
+            selected_file_info.color = ft.Colors.AMBER_700
+
             if not selected_path:
                 selected_file_info.value = "Select a file first."
                 selected_file_info.color = ft.Colors.RED_400
@@ -394,6 +440,13 @@ class RSAEncryptDecrypt:
                 selected_file_info.color = ft.Colors.RED_400
                 self.page.update()
                 return
+
+            has_private, has_public = self._pem_type(pem)
+            if not has_private:
+                key_field.error_text = "Private key PEM required for file decryption: Public key was provided"
+                self.page.update()
+                return
+
             try:
                 prog.visible = True
                 self.page.update()
@@ -407,8 +460,23 @@ class RSAEncryptDecrypt:
                     aes = AES_CTR(session_key)
                     ct_body = aes.encrypt(body, nonce=nonce)
 
-                    key = RSAKey.import_key(pem)
-                    enc_session = key.oaep_encrypt(session_key)
+                    try:
+                        key = RSAKey.import_key(pem)
+                    except Exception as e:
+                        key_field.error_text = f"Invalid public key PEM: {e}"
+                        self.page.update()
+                        return
+
+                    try:
+                        enc_session = key.oaep_encrypt(session_key)
+                    except Exception as e:
+                        selected_file_info.value = (
+                            f"❌ RSA session key encryption failed: {e}"
+                        )
+                        selected_file_info.color = ft.Colors.RED_400
+                        self.page.update()
+                        return
+
                     header = len(enc_session).to_bytes(2, "big")
                     out_bytes = header + enc_session + nonce + ct_body
 
@@ -433,10 +501,31 @@ class RSAEncryptDecrypt:
                     nonce = raw[2 + enc_len : 2 + enc_len + 8]
                     ct_body = raw[2 + enc_len + 8 :]
 
-                    key = RSAKey.import_key(pem)
-                    session_key = key.oaep_decrypt(enc_session)
+                    try:
+                        key = RSAKey.import_key(pem)
+                    except Exception as e:
+                        key_field.error_text = f"Invalid private key PEM: {e}"
+                        self.page.update()
+                        return
+
+                    try:
+                        session_key = key.oaep_decrypt(enc_session)
+                    except Exception as e:
+                        selected_file_info.value = (
+                            f"❌ RSA session key decryption failed: {e}"
+                        )
+                        selected_file_info.color = ft.Colors.RED_400
+                        self.page.update()
+                        return
+
                     aes = AES_CTR(session_key)
-                    body = aes.decrypt(ct_body, nonce=nonce)
+                    try:
+                        body = aes.decrypt(ct_body, nonce=nonce)
+                    except Exception as e:
+                        selected_file_info.value = f"❌ AES decryption failed: {e}"
+                        selected_file_info.color = ft.Colors.RED_400
+                        self.page.update()
+                        return
 
                     if selected_path.endswith(".enc"):
                         out_name = selected_path[:-4]
@@ -508,27 +597,3 @@ class RSAEncryptDecrypt:
         )
 
         return ft.Container(vertical_scroll(surface_card(content)), padding=10)
-
-    # ---------- Utilities ----------
-    def _paste(self, field: ft.TextField):
-        field.value = self.page.get_clipboard()
-        self.page.update()
-
-    def _platform(self):
-        try:
-            if self.page.web:
-                return "web"
-            else:
-                return self.page.platform.name.lower()
-        except Exception:
-            return None
-
-    def _show_not_supported(self, action: str):
-        plat = self._platform()
-        self.page.open(
-            ft.SnackBar(
-                ft.Text(
-                    f"{action} not supported on platform: {plat if plat else 'unknown'}"
-                )
-            )
-        )

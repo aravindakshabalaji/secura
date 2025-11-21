@@ -373,7 +373,7 @@ class KeyManagement:
         def _save_pem_to_file(pem: str, filename: str):
             plat = self._platform()
 
-            if plat in (ft.PagePlatform.WEB, ft.PagePlatform.MOBILE):
+            if plat in ("web", "mobile"):
                 self._show_not_supported("Downloading files")
                 return
 
