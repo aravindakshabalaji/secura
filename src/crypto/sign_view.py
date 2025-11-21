@@ -1,11 +1,11 @@
-import os
+import os.path
 from typing import Optional
 
 import flet as ft
 from pycrypt.asymmetric import RSAKey
 
 from crypto.base_view import BaseView
-from ui.components import IconButton, PrimaryButton, TonalButton
+from ui.components import PrimaryButton, TonalButton
 from ui.theme import GAP_MD, section_title
 
 
@@ -14,12 +14,8 @@ class RSASignVerify(BaseView):
         super().__init__(page)
         self.page.title = "RSA Sign / Verify | Cryptographic Suite"
 
-        self.key_picker = ft.FilePicker()
-        self.key_picker.on_result = self._on_key_pick
-        self._key_field_target = None
-
         self.file_picker = ft.FilePicker()
-        self.page.overlay.extend([self.key_picker, self.file_picker])
+        self.page.overlay.append(self.file_picker)
 
     # ---------- Public view ----------
     def view(self) -> ft.View:
@@ -48,77 +44,14 @@ class RSASignVerify(BaseView):
         has_public = "PUBLIC KEY" in s
         return has_private, has_public
 
-    def _pick_key_for_field(self, field: ft.TextField):
-        self._key_field_target = field
-        self.key_picker.pick_files(allow_multiple=False)
-
-    def _on_key_pick(self, e: ft.FilePickerResultEvent):
-        target = self._key_field_target
-        self._key_field_target = None
-
-        if not target:
-            return
-
-        if e.files:
-            f = e.files[0]
-            try:
-                path = f.path or f.name
-                with open(path, "r", encoding="utf-8") as fh:
-                    target.value = fh.read()
-                self.page.update()
-            except Exception as err:
-                target.error_text = f"Failed to import: {err}"
-                self.page.update()
-
-    def _key_field(self):
-        key_field = ft.TextField(
-            label="Key (PEM)",
-            multiline=True,
-            max_lines=8,
-            width=820,
-            prefix_icon=ft.Icons.KEY,
-            hint_text="Public PEM for encrypt / Private PEM for decrypt",
-            password=True,
-        )
-
-        toggle_btn = IconButton(
-            self.page, icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide Key"
-        )
-
-        def toggle(_):
-            key_field.password = not key_field.password
-            toggle_btn.icon = (
-                ft.Icons.VISIBILITY
-                if not key_field.password
-                else ft.Icons.VISIBILITY_OFF
-            )
-            self.page.update()
-
-        toggle_btn.on_click = toggle
-
-        key_field.suffix = ft.Row(
-            [
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.FILE_UPLOAD,
-                    tooltip="Import PEM file",
-                    on_click=lambda _: (
-                        self._show_not_supported("Uploading files")
-                        if self._platform() == "web"
-                        else self._pick_key_for_field(key_field)
-                    ),
-                ),
-                toggle_btn,
-            ],
-            spacing=4,
-            tight=True,
-        )
-
-        return key_field
-
     # ---------- Text mode ----------
     def _text_mode(self):
-        key_field = self._key_field()
+        key_field = self._key_field(
+            "Key (PEM)",
+            "Public PEM for encrypt / Private PEM for decrypt",
+            "PEM",
+            ["pem"],
+        )
 
         input_field = ft.TextField(
             prefix_icon=ft.Icons.EMAIL_OUTLINED,
@@ -127,6 +60,7 @@ class RSASignVerify(BaseView):
             max_lines=6,
             width=500,
         )
+        input_field.suffix = self._paste_button(input_field)
 
         signature_field = ft.TextField(
             prefix_icon=ft.Icons.VERIFIED_OUTLINED,
@@ -135,6 +69,7 @@ class RSASignVerify(BaseView):
             max_lines=6,
             width=500,
         )
+        signature_field.suffix = self._copy_button(signature_field, "signature")
 
         verify_result = ft.Text("", visible=False)
         prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
@@ -296,7 +231,12 @@ class RSASignVerify(BaseView):
         selected_file_info = ft.Text("No file selected.", color=ft.Colors.AMBER_700)
         prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
 
-        key_field = self._key_field()
+        key_field = self._key_field(
+            "Key (PEM)",
+            "Public PEM for encrypt / Private PEM for decrypt",
+            "PEM",
+            ["pem"],
+        )
 
         selected_path: Optional[str] = None
 

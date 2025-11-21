@@ -1,4 +1,4 @@
-import os
+import os.path
 from secrets import token_bytes, token_hex
 
 import flet as ft
@@ -15,11 +15,7 @@ class AESEncryptDecrypt(BaseView):
         self.page.title = "AES Encrypt / Decrypt | Cryptographic Suite"
 
         self.text_file_picker = ft.FilePicker()
-        self.key_picker = ft.FilePicker()
-        self.page.overlay.extend([self.text_file_picker, self.key_picker])
-
-        self._key_field_target: ft.TextField | None = None
-        self.key_picker.on_result = self._on_key_file_result
+        self.page.overlay.append(self.text_file_picker)
 
     # ---------- Public view ----------
     def view(self):
@@ -65,98 +61,6 @@ class AESEncryptDecrypt(BaseView):
             return None
         return key
 
-    # ---------- key file handling ----------
-    def _on_key_file_result(self, e: ft.FilePickerResultEvent):
-        target = self._key_field_target
-        self._key_field_target = None
-
-        if not target:
-            return
-
-        if not e.files:
-            target.error_text = "No file selected"
-            self.page.update()
-            return
-
-        f = e.files[0]
-        path = f.path or f.name
-        try:
-            with open(path, "rb") as fh:
-                raw = fh.read()
-
-            try:
-                txt = raw.decode("utf-8").strip()
-            except Exception:
-                txt = None
-
-            if txt:
-                stripped = txt.strip()
-                is_hex = all(
-                    ch in "0123456789abcdefABCDEF"
-                    for ch in stripped.replace("\n", "")
-                    .replace("\r", "")
-                    .replace(" ", "")
-                )
-                if is_hex:
-                    target.value = stripped.upper()
-                else:
-                    target.value = txt
-            else:
-                target.value = raw.hex().upper()
-
-            target.error_text = None
-            self.page.update()
-        except Exception as err:
-            target.error_text = f"Failed to import: {err}"
-            self.page.update()
-
-    def _pick_key_for_field(self, field: ft.TextField):
-        self._key_field_target = field
-        self.key_picker.pick_files(allow_multiple=False)
-
-    def _key_field(self):
-        key_field = ft.TextField(
-            label="Key (hex)",
-            hint_text="32/48/64 characters",
-            password=True,
-            prefix_icon=ft.Icons.KEY,
-            width=520,
-        )
-
-        toggle_btn = IconButton(
-            self.page, icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide Key"
-        )
-
-        def toggle(_):
-            key_field.password = not key_field.password
-            toggle_btn.icon = (
-                ft.Icons.VISIBILITY
-                if not key_field.password
-                else ft.Icons.VISIBILITY_OFF
-            )
-            self.page.update()
-
-        toggle_btn.on_click = toggle
-
-        key_field.suffix = ft.Row(
-            [
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.FILE_UPLOAD,
-                    tooltip="Import key file",
-                    on_click=lambda _: (
-                        self._show_not_supported("Uploading files")
-                        if self._platform() == "web"
-                        else self._pick_key_for_field(key_field)
-                    ),
-                ),
-                toggle_btn,
-            ],
-            spacing=4,
-            tight=True,
-        )
-        return key_field
-
     # ---------- Text mode ----------
     def _text_mode(self):
         mode_dd = ft.Dropdown(
@@ -171,7 +75,7 @@ class AESEncryptDecrypt(BaseView):
             width=300,
         )
 
-        key_field = self._key_field()
+        key_field = self._key_field("Key (hex)", "32/48/64 characters", "AES key")
 
         iv_field = ft.TextField(
             prefix_icon=ft.Icons.TAG,
@@ -229,6 +133,7 @@ class AESEncryptDecrypt(BaseView):
             max_lines=6,
             width=500,
         )
+        input_field.suffix = self._paste_button(input_field)
 
         output_field = ft.TextField(
             prefix_icon=ft.Icons.OUTPUT,
@@ -491,7 +396,7 @@ class AESEncryptDecrypt(BaseView):
         prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
         selected_file_info = ft.Text("No file selected.", color=ft.Colors.AMBER_700)
 
-        key_field = self._key_field()
+        key_field = self._key_field("Key (hex)", "32/48/64 characters", "AES key")
 
         selected_path: str | None = None
 

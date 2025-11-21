@@ -4,7 +4,13 @@ import flet as ft
 from pycrypt.asymmetric import RSAKey
 
 from crypto.base_view import BaseView
-from ui.components import IconButton, PrimaryButton, TonalButton, scrollable_table, vertical_scroll
+from ui.components import (
+    IconButton,
+    PrimaryButton,
+    TonalButton,
+    scrollable_table,
+    vertical_scroll,
+)
 from ui.theme import GAP_MD, section_title, subsection_title
 
 

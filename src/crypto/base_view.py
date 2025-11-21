@@ -8,12 +8,98 @@ class BaseView:
     def __init__(self, page: ft.Page):
         self.page = page
 
+        self.key_picker = ft.FilePicker()
+        self.key_picker.on_result = self._on_key_pick
+        self._key_field_target = None
+
+        self.page.overlay.append(self.key_picker)
+
+    def _pick_key_for_field(self, field: ft.TextField, exts):
+        self._key_field_target = field
+        self.key_picker.pick_files(
+            allow_multiple=False,
+            file_type=ft.FilePickerFileType.CUSTOM,
+            allowed_extensions=exts,
+        )
+
+    def _on_key_pick(self, e: ft.FilePickerResultEvent):
+        target = self._key_field_target
+        self._key_field_target = None
+
+        if not target:
+            return
+
+        if e.files:
+            f = e.files[0]
+            try:
+                path = f.path or f.name
+                with open(path, "r", encoding="utf-8") as fh:
+                    target.value = fh.read()
+                self.page.update()
+            except Exception as err:
+                target.error_text = f"Failed to import: {err}"
+                self.page.update()
+
+    def _key_field(self, label, hint_text, upload_tooltip, exts=["key"]):
+        key_field = ft.TextField(
+            label=label,
+            multiline=True,
+            max_lines=8,
+            width=820,
+            prefix_icon=ft.Icons.KEY,
+            hint_text=hint_text,
+            password=True,
+        )
+
+        toggle_btn = IconButton(
+            self.page, icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide Key"
+        )
+
+        def toggle(_):
+            key_field.password = not key_field.password
+            toggle_btn.icon = (
+                ft.Icons.VISIBILITY
+                if not key_field.password
+                else ft.Icons.VISIBILITY_OFF
+            )
+            self.page.update()
+
+        toggle_btn.on_click = toggle
+
+        key_field.suffix = ft.Row(
+            [
+                IconButton(
+                    self.page,
+                    icon=ft.Icons.FILE_UPLOAD,
+                    tooltip=f"Import {upload_tooltip} file",
+                    on_click=lambda _: (
+                        self._show_not_supported("Uploading files")
+                        if self._platform() == "web"
+                        else self._pick_key_for_field(key_field, exts)
+                    ),
+                ),
+                toggle_btn,
+            ],
+            spacing=4,
+            tight=True,
+        )
+
+        return key_field
+
     def _paste_field(self, field: ft.TextField):
         try:
             field.value = self.page.get_clipboard()
         except Exception:
             field.value = ""
         self.page.update()
+
+    def _paste_button(self, field):
+        return IconButton(
+            self.page,
+            icon=ft.Icons.PASTE,
+            tooltip="Paste value from clipboard",
+            on_click=lambda _: self._paste_field(field),
+        )
 
     def _copy(self, value):
         self._snack("✅ Copied value")
