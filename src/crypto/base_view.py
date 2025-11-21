@@ -8,32 +8,32 @@ class BaseView:
     def __init__(self, page: ft.Page):
         self.page = page
 
-    def paste_field(self, field: ft.TextField):
+    def _paste_field(self, field: ft.TextField):
         try:
             field.value = self.page.get_clipboard()
         except Exception:
             field.value = ""
         self.page.update()
 
-    def copy(self, value):
-        self.snack("✅ Copied value")
+    def _copy(self, value):
+        self._snack("✅ Copied value")
         self.page.set_clipboard(value)
 
-    def copy_field(self, field):
+    def _copy_field(self, field):
         if field.value:
-            self.copy(field.value)
+            self._copy(field.value)
 
-    def copy_button(self, value, valuename="value", icon=ft.Icons.COPY):
+    def _copy_button(self, value, valuename="value", icon=ft.Icons.COPY):
         return IconButton(
             self.page,
             icon,
             tooltip=f"Copy {valuename}",
-            on_click=lambda _: self.copy_field(value)
+            on_click=lambda _: self._copy_field(value)
             if isinstance(value, ft.TextField)
-            else self.copy(value),
+            else self._copy(value),
         )
 
-    def platform(self):
+    def _platform(self):
         try:
             if self.page.web:
                 return "web"
@@ -41,8 +41,8 @@ class BaseView:
         except Exception:
             return None
 
-    def show_not_supported(self, action: str):
-        plat = self.platform()
+    def _show_not_supported(self, action: str):
+        plat = self._platform()
         self.page.open(
             ft.SnackBar(
                 ft.Text(
@@ -52,11 +52,11 @@ class BaseView:
         )
         self.page.update()
 
-    def snack(self, text: str):
+    def _snack(self, text: str):
         self.page.open(ft.SnackBar(ft.Text(text)))
         self.page.update()
 
-    def clear_errors(self, *fields: ft.TextField, warning: ft.Text | None = None):
+    def _clear_errors(self, *fields: ft.TextField, warning: ft.Text | None = None):
         for f in fields:
             f.error_text = None
         if warning is not None:

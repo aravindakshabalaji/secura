@@ -4,7 +4,7 @@ import flet as ft
 from pycrypt.asymmetric import RSAKey
 
 from crypto.base_view import BaseView
-from ui.components import IconButton, PrimaryButton, TonalButton, vertical_scroll
+from ui.components import IconButton, PrimaryButton, TonalButton, scrollable_table, vertical_scroll
 from ui.theme import GAP_MD, section_title, subsection_title
 
 
@@ -68,7 +68,7 @@ class KeyManagement(BaseView):
 
         key_field.suffix = ft.Row(
             [
-                self.copy_button(key_field, "key"),
+                self._copy_button(key_field, "key"),
                 toggle_btn,
             ],
             spacing=4,
@@ -100,10 +100,10 @@ class KeyManagement(BaseView):
             return safe
 
         def _save_aes_to_file(hex_key: str, filename: str):
-            plat = self.platform()
+            plat = self._platform()
 
             if plat not in ("windows", "linux", "macos"):
-                self.show_not_supported("Downloading files")
+                self._show_not_supported("Downloading files")
                 return
 
             try:
@@ -113,9 +113,9 @@ class KeyManagement(BaseView):
                         if e.path:
                             with open(f"{e.path}.key", "w", encoding="utf-8") as fh:
                                 fh.write(hex_key + "\n")
-                            self.snack(f"Saved: {e.path}.key")
+                            self._snack(f"Saved: {e.path}.key")
                     except Exception as err:
-                        self.snack(f"Save failed: {err}")
+                        self._snack(f"Save failed: {err}")
 
                 aes_save_picker.on_result = _on_save
                 aes_save_picker.save_file(
@@ -125,7 +125,7 @@ class KeyManagement(BaseView):
                 )
 
             except Exception as err:
-                self.snack(f"Save failed: {err}")
+                self._snack(f"Save failed: {err}")
 
         def refresh():
             if not self.conn:
@@ -152,7 +152,7 @@ class KeyManagement(BaseView):
                                     width=520,
                                 )
                             ),
-                            ft.DataCell(self.copy_button(key_hex, "key")),
+                            ft.DataCell(self._copy_button(key_hex, "key")),
                             ft.DataCell(
                                 IconButton(
                                     self.page,
@@ -237,12 +237,12 @@ class KeyManagement(BaseView):
                 key_field,
                 ft.Divider(),
                 subsection_title("Saved AES keys"),
-                vertical_scroll(keys_table),
+                vertical_scroll(scrollable_table(keys_table)),
             ]
         )
 
     # ---------- RSA ----------
-    def _rsa_tab(self) -> ft.Control:
+    def _rsa_tab(self):
         sizes = ["1024", "2048", "3072", "4096"]
         size_dd = ft.Dropdown(
             label="RSA Key Size",
@@ -271,9 +271,9 @@ class KeyManagement(BaseView):
             prefix_icon=ft.Icons.LOCK,
         )
 
-        copy_pub = self.copy_button(pub_field, "public key")
+        copy_pub = self._copy_button(pub_field, "public key")
 
-        copy_priv = self.copy_button(priv_field, "private key", ft.Icons.COPY_ALL)
+        copy_priv = self._copy_button(priv_field, "private key", ft.Icons.COPY_ALL)
 
         toggle_btn = IconButton(
             self.page, icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide Key"
@@ -321,10 +321,10 @@ class KeyManagement(BaseView):
             return safe
 
         def _save_pem_to_file(pem: str, filename: str):
-            plat = self.platform()
+            plat = self._platform()
 
             if plat in ("web", "mobile"):
-                self.show_not_supported("Downloading files")
+                self._show_not_supported("Downloading files")
                 return
 
             try:
@@ -334,9 +334,9 @@ class KeyManagement(BaseView):
                         if e.path:
                             with open(f"{e.path}.pem", "w", encoding="utf-8") as fh:
                                 fh.write(pem)
-                            self.snack(f"Saved: {e.path}.pem")
+                            self._snack(f"Saved: {e.path}.pem")
                     except Exception as err:
-                        self.snack(f"Save failed: {err}")
+                        self._snack(f"Save failed: {err}")
 
                 save_picker.on_result = _on_save
                 save_picker.save_file(
@@ -346,7 +346,7 @@ class KeyManagement(BaseView):
                 )
 
             except Exception as err:
-                self.snack(f"Save failed: {err}")
+                self._snack(f"Save failed: {err}")
 
         def refresh():
             if not self.conn:
@@ -375,9 +375,9 @@ class KeyManagement(BaseView):
                                     width=520,
                                 )
                             ),
-                            ft.DataCell(self.copy_button(pub_pem, "public key")),
+                            ft.DataCell(self._copy_button(pub_pem, "public key")),
                             ft.DataCell(
-                                self.copy_button(
+                                self._copy_button(
                                     priv_pem, "private key", ft.Icons.COPY_ALL
                                 )
                             ),
@@ -496,6 +496,6 @@ class KeyManagement(BaseView):
                 ),
                 ft.Divider(),
                 subsection_title("Saved RSA keys"),
-                vertical_scroll(rsa_table),
+                vertical_scroll(scrollable_table(rsa_table)),
             ]
         )

@@ -13,7 +13,11 @@ class RSASignVerify(BaseView):
     def __init__(self, page: ft.Page):
         super().__init__(page)
         self.page.title = "RSA Sign / Verify | Cryptographic Suite"
+
         self.key_picker = ft.FilePicker()
+        self.key_picker.on_result = self._on_key_pick
+        self._key_field_target = None
+
         self.file_picker = ft.FilePicker()
         self.page.overlay.extend([self.key_picker, self.file_picker])
 
@@ -38,77 +42,90 @@ class RSASignVerify(BaseView):
 
         return self.render_view(header, tabs, "/crypto/rsa-sign-verify")
 
-    def _pem_type(self, pem: str) -> tuple[bool, bool]:
+    def _pem_type(self, pem):
         s = (pem or "").upper()
         has_private = "PRIVATE KEY" in s or "ENCRYPTED PRIVATE KEY" in s
         has_public = "PUBLIC KEY" in s
         return has_private, has_public
 
-    # ---------- Text mode ----------
-    def _text_mode(self) -> ft.Control:
+    def _pick_key_for_field(self, field: ft.TextField):
+        self._key_field_target = field
+        self.key_picker.pick_files(allow_multiple=False)
+
+    def _on_key_pick(self, e: ft.FilePickerResultEvent):
+        target = self._key_field_target
+        self._key_field_target = None
+
+        if not target:
+            return
+
+        if e.files:
+            f = e.files[0]
+            try:
+                path = f.path or f.name
+                with open(path, "r", encoding="utf-8") as fh:
+                    target.value = fh.read()
+                self.page.update()
+            except Exception as err:
+                target.error_text = f"Failed to import: {err}"
+                self.page.update()
+
+    def _key_field(self):
         key_field = ft.TextField(
             label="Key (PEM)",
             multiline=True,
             max_lines=8,
             width=820,
             prefix_icon=ft.Icons.KEY,
-            hint_text="Private PEM for sign / Public PEM for verify",
+            hint_text="Public PEM for encrypt / Private PEM for decrypt",
+            password=True,
         )
+
+        toggle_btn = IconButton(
+            self.page, icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide Key"
+        )
+
+        def toggle(_):
+            key_field.password = not key_field.password
+            toggle_btn.icon = (
+                ft.Icons.VISIBILITY
+                if not key_field.password
+                else ft.Icons.VISIBILITY_OFF
+            )
+            self.page.update()
+
+        toggle_btn.on_click = toggle
+
         key_field.suffix = ft.Row(
             [
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.PASTE,
-                    tooltip="Paste PEM from clipboard",
-                    on_click=lambda _: self.paste_field(key_field),
-                ),
                 IconButton(
                     self.page,
                     icon=ft.Icons.FILE_UPLOAD,
                     tooltip="Import PEM file",
                     on_click=lambda _: (
-                        self.show_not_supported("Uploading files")
-                        if self.platform() == "web"
-                        else self.key_picker.pick_files(allow_multiple=False)
+                        self._show_not_supported("Uploading files")
+                        if self._platform() == "web"
+                        else self._pick_key_for_field(key_field)
                     ),
                 ),
+                toggle_btn,
             ],
-            spacing=6,
+            spacing=4,
             tight=True,
         )
 
-        def on_key_pick(e: ft.FilePickerResultEvent):
-            if e.files:
-                f = e.files[0]
-                try:
-                    path = f.path or f.name
-                    with open(path, "r", encoding="utf-8") as fh:
-                        key_field.value = fh.read()
-                    self.page.update()
-                except Exception as err:
-                    key_field.error_text = f"Failed to import: {err}"
-                    self.page.update()
+        return key_field
 
-        self.key_picker.on_result = on_key_pick
+    # ---------- Text mode ----------
+    def _text_mode(self):
+        key_field = self._key_field()
 
         input_field = ft.TextField(
             prefix_icon=ft.Icons.EMAIL_OUTLINED,
             label="Message (plaintext)",
             multiline=True,
             max_lines=6,
-            width=820,
-        )
-        input_field.suffix = ft.Row(
-            [
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.PASTE,
-                    tooltip="Paste message from clipboard",
-                    on_click=lambda _: self.paste_field(input_field),
-                )
-            ],
-            spacing=6,
-            tight=True,
+            width=500,
         )
 
         signature_field = ft.TextField(
@@ -116,28 +133,14 @@ class RSASignVerify(BaseView):
             label="Signature (hex)",
             multiline=True,
             max_lines=6,
-            width=820,
-        )
-
-        signature_field.suffix = ft.Row(
-            [
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.PASTE,
-                    tooltip="Paste signature from clipboard",
-                    on_click=lambda _: self.paste_field(signature_field),
-                ),
-                self.copy_button(signature_field, "signature"),
-            ],
-            spacing=6,
-            tight=True,
+            width=500,
         )
 
         verify_result = ft.Text("", visible=False)
         prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
 
         def sign_click(_):
-            self.clear_errors(key_field, input_field, signature_field)
+            self._clear_errors(key_field, input_field, signature_field)
 
             signature_field.value = ""
             pem = (key_field.value or "").strip()
@@ -189,7 +192,7 @@ class RSASignVerify(BaseView):
                 self.page.update()
 
         def verify_click(_):
-            self.clear_errors(key_field, input_field, signature_field)
+            self._clear_errors(key_field, input_field, signature_field)
 
             pem = (key_field.value or "").strip()
             msg = (input_field.value or "").encode()
@@ -269,47 +272,31 @@ class RSASignVerify(BaseView):
                 section_title("Text Mode"),
                 key_field,
                 buttons,
-                input_field,
-                signature_field,
+                ft.ResponsiveRow(
+                    [
+                        ft.Container(
+                            input_field, alignment=ft.alignment.center, col={"sm": 6}
+                        ),
+                        ft.Container(
+                            signature_field,
+                            alignment=ft.alignment.center,
+                            col={"sm": 6},
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=12,
+                    width=1000,
+                ),
                 ft.Container(verify_result, alignment=ft.alignment.center),
             ]
         )
 
     # ---------- File mode ----------
-    def _file_mode(self) -> ft.Control:
+    def _file_mode(self):
         selected_file_info = ft.Text("No file selected.", color=ft.Colors.AMBER_700)
         prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
 
-        key_field = ft.TextField(
-            label="Key (PEM)",
-            multiline=True,
-            max_lines=8,
-            width=600,
-            prefix_icon=ft.Icons.KEY,
-            hint_text="Private PEM for sign / Public PEM for verify",
-        )
-        key_field.suffix = ft.Row(
-            [
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.PASTE,
-                    tooltip="Paste PEM from clipboard",
-                    on_click=lambda _: self.paste_field(key_field),
-                ),
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.FILE_UPLOAD,
-                    tooltip="Import PEM file",
-                    on_click=lambda _: (
-                        self.show_not_supported("Uploading files")
-                        if self.platform() == "web"
-                        else self.key_picker.pick_files(allow_multiple=False)
-                    ),
-                ),
-            ],
-            spacing=6,
-            tight=True,
-        )
+        key_field = self._key_field()
 
         selected_path: Optional[str] = None
 
@@ -445,8 +432,8 @@ class RSASignVerify(BaseView):
                     "Select File",
                     icon=ft.Icons.FOLDER_OPEN,
                     on_click=lambda _: (
-                        self.show_not_supported("Uploading files")
-                        if self.platform() == "web"
+                        self._show_not_supported("Uploading files")
+                        if self._platform() == "web"
                         else self.file_picker.pick_files(allow_multiple=False)
                     ),
                 ),

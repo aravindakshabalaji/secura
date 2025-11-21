@@ -110,6 +110,53 @@ class AESEncryptDecrypt(BaseView):
             target.error_text = f"Failed to import: {err}"
             self.page.update()
 
+    def _pick_key_for_field(self, field: ft.TextField):
+        self._key_field_target = field
+        self.key_picker.pick_files(allow_multiple=False)
+
+    def _key_field(self):
+        key_field = ft.TextField(
+            label="Key (hex)",
+            hint_text="32/48/64 characters",
+            password=True,
+            prefix_icon=ft.Icons.KEY,
+            width=520,
+        )
+
+        toggle_btn = IconButton(
+            self.page, icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide Key"
+        )
+
+        def toggle(_):
+            key_field.password = not key_field.password
+            toggle_btn.icon = (
+                ft.Icons.VISIBILITY
+                if not key_field.password
+                else ft.Icons.VISIBILITY_OFF
+            )
+            self.page.update()
+
+        toggle_btn.on_click = toggle
+
+        key_field.suffix = ft.Row(
+            [
+                IconButton(
+                    self.page,
+                    icon=ft.Icons.FILE_UPLOAD,
+                    tooltip="Import key file",
+                    on_click=lambda _: (
+                        self._show_not_supported("Uploading files")
+                        if self._platform() == "web"
+                        else self._pick_key_for_field(key_field)
+                    ),
+                ),
+                toggle_btn,
+            ],
+            spacing=4,
+            tight=True,
+        )
+        return key_field
+
     # ---------- Text mode ----------
     def _text_mode(self):
         mode_dd = ft.Dropdown(
@@ -124,37 +171,7 @@ class AESEncryptDecrypt(BaseView):
             width=300,
         )
 
-        key_field = ft.TextField(
-            label="Key (hex)",
-            hint_text="32/48/64 characters",
-            password=True,
-            can_reveal_password=True,
-            prefix_icon=ft.Icons.KEY,
-            width=520,
-        )
-        # paste + file upload suffix (uses shared key picker)
-        key_field.suffix = ft.Row(
-            [
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.PASTE,
-                    tooltip="Paste key from clipboard",
-                    on_click=lambda _: self.paste_field(key_field),
-                ),
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.FILE_UPLOAD,
-                    tooltip="Import key file",
-                    on_click=lambda _: (
-                        self.show_not_supported("Uploading files")
-                        if self.platform() == "web"
-                        else self._pick_key_for_field(key_field)
-                    ),
-                ),
-            ],
-            spacing=6,
-            tight=True,
-        )
+        key_field = self._key_field()
 
         iv_field = ft.TextField(
             prefix_icon=ft.Icons.TAG,
@@ -212,12 +229,7 @@ class AESEncryptDecrypt(BaseView):
             max_lines=6,
             width=500,
         )
-        input_field.suffix = IconButton(
-            self.page,
-            icon=ft.Icons.PASTE,
-            tooltip="Paste from clipboard",
-            on_click=lambda _: self.paste_field(input_field),
-        )
+
         output_field = ft.TextField(
             prefix_icon=ft.Icons.OUTPUT,
             label="Output",
@@ -235,7 +247,7 @@ class AESEncryptDecrypt(BaseView):
 
         output_field.suffix = ft.Row(
             [
-                self.copy_button(output_field, "output"),
+                self._copy_button(output_field, "output"),
                 IconButton(
                     self.page,
                     icon=ft.Icons.SYNC_ALT,
@@ -243,7 +255,7 @@ class AESEncryptDecrypt(BaseView):
                     on_click=fill_input_from_output,
                 ),
             ],
-            spacing=6,
+            spacing=4,
             tight=True,
         )
 
@@ -292,7 +304,7 @@ class AESEncryptDecrypt(BaseView):
             return value
 
         def encrypt_click(_):
-            self.clear_errors(
+            self._clear_errors(
                 key_field,
                 input_field,
                 iv_field,
@@ -353,7 +365,7 @@ class AESEncryptDecrypt(BaseView):
             self.page.update()
 
         def decrypt_click(_):
-            self.clear_errors(
+            self._clear_errors(
                 key_field,
                 input_field,
                 iv_field,
@@ -474,45 +486,12 @@ class AESEncryptDecrypt(BaseView):
             ]
         )
 
-    def _pick_key_for_field(self, field: ft.TextField):
-        self._key_field_target = field
-        self.key_picker.pick_files(allow_multiple=False)
-
     # ---------- File mode ----------
     def _file_mode(self):
         prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
         selected_file_info = ft.Text("No file selected.", color=ft.Colors.AMBER_700)
 
-        key_field = ft.TextField(
-            label="Key (hex)",
-            hint_text="32/48/64 characters",
-            password=True,
-            can_reveal_password=True,
-            width=420,
-            prefix_icon=ft.Icons.KEY,
-        )
-        key_field.suffix = ft.Row(
-            [
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.PASTE,
-                    tooltip="Paste key from clipboard",
-                    on_click=lambda _: self.paste_field(key_field),
-                ),
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.FILE_UPLOAD,
-                    tooltip="Import key file",
-                    on_click=lambda _: (
-                        self.show_not_supported("Uploading files")
-                        if self.platform() == "web"
-                        else self._pick_key_for_field(key_field)
-                    ),
-                ),
-            ],
-            spacing=6,
-            tight=True,
-        )
+        key_field = self._key_field()
 
         selected_path: str | None = None
 
@@ -598,8 +577,8 @@ class AESEncryptDecrypt(BaseView):
                     "Select File",
                     icon=ft.Icons.FOLDER_OPEN,
                     on_click=lambda _: (
-                        self.show_not_supported("Uploading files")
-                        if self.platform() == "web"
+                        self._show_not_supported("Uploading files")
+                        if self._platform() == "web"
                         else self.text_file_picker.pick_files(allow_multiple=False)
                     ),
                 ),

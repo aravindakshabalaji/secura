@@ -9,7 +9,7 @@ class CryptoSuite:
         self.page = page
         self.page.title = "Cryptographic Suite"
 
-    def feature_box(self, title: str, on_click=None):
+    def _feature_box(self, title, on_click=None):
         return ft.Container(
             content=ft.Text(
                 title,
@@ -41,19 +41,19 @@ class CryptoSuite:
 
         grid = ft.ResponsiveRow(
             [
-                self.feature_box(
+                self._feature_box(
                     "AES Encrypt / Decrypt",
                     on_click=lambda _: self.page.go("/crypto/aes-enc-dec"),
                 ),
-                self.feature_box(
+                self._feature_box(
                     "RSA Encrypt / Decrypt",
                     on_click=lambda _: self.page.go("/crypto/rsa-enc-dec"),
                 ),
-                self.feature_box(
+                self._feature_box(
                     "RSA Sign / Verify",
                     on_click=lambda _: self.page.go("/crypto/rsa-sign-verify"),
                 ),
-                self.feature_box(
+                self._feature_box(
                     "Key Management", on_click=lambda _: self.page.go("/crypto/keys")
                 ),
             ],
