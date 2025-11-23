@@ -29,7 +29,14 @@ class CryptoSuite:
         )
 
     def view(self) -> ft.View:
-        header = toolbar_back(self.page, "🔐 Cryptographic Suite", "/")
+        header = ft.Text(
+            "🔐 Cryptographic Suite",
+            size=26,
+            weight=ft.FontWeight.BOLD,
+            expand=1,
+            max_lines=None,
+            overflow=ft.TextOverflow.VISIBLE,
+        )
 
         grid = ft.ResponsiveRow(
             [

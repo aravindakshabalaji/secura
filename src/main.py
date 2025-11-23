@@ -20,28 +20,7 @@ def main(page: ft.Page):
     )
     page.theme = build_theme(page.client_storage.get("secura.color_scheme"))
 
-    page.username = "aravindaksha"
     page.conn = connect_db()
-
-    def toggle_theme(e):
-        if page.theme_mode == ft.ThemeMode.DARK:
-            page.theme_mode = ft.ThemeMode.LIGHT
-            page.client_storage.set("secura.light_mode", True)
-            e.control.icon = ft.Icons.DARK_MODE_OUTLINED
-        else:
-            page.theme_mode = ft.ThemeMode.DARK
-            page.client_storage.set("secura.light_mode", False)
-            e.control.icon = ft.Icons.LIGHT_MODE_OUTLINED
-
-        page.update()
-
-    def color_change(e):
-        color = e.control.content.color
-        page.client_storage.set("secura.color_scheme", color)
-        page.theme = build_theme(color)
-        page.update()
-
-    page.appbar = build_appbar(page, toggle_theme, color_change)
 
     def route_change(e: ft.RouteChangeEvent):
         page.views.clear()

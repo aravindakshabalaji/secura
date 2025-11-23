@@ -23,9 +23,9 @@ def connect_db():
         BEGIN;
         CREATE TABLE IF NOT EXISTS secura(
             username TEXT PRIMARY KEY,
-            password_hash TEXT NOT NULL,
-            salt TEXT NOT NULL,
-            creation_date DATETIME DEFAULT CURRENT_TIMESTAMP
+            password_hash BLOB NOT NULL,
+            salt BLOB NOT NULL,
+            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS user_aes_keys(
@@ -33,7 +33,7 @@ def connect_db():
             username TEXT NOT NULL,
             bits INTEGER NOT NULL,
             key_material BLOB NOT NULL,
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (username) REFERENCES secura(username) ON DELETE CASCADE
         );
 
@@ -41,9 +41,9 @@ def connect_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL,
             bits INTEGER NOT NULL,
-            public_pem TEXT NOT NULL,
-            private_pem TEXT NOT NULL,
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            public_pem BLOB NOT NULL,
+            private_pem BLOB NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (username) REFERENCES secura(username) ON DELETE CASCADE
         );
 
@@ -51,9 +51,9 @@ def connect_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL,
             bits INTEGER NOT NULL,
-            public_pem TEXT NOT NULL,
-            private_pem TEXT NOT NULL,
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            public_pem BLOB NOT NULL,
+            private_pem BLOB NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (username) REFERENCES secura(username) ON DELETE CASCADE
         );
 
@@ -61,9 +61,5 @@ def connect_db():
         """
     )
 
-    conn.execute(
-        "INSERT OR IGNORE INTO secura (username, password_hash, salt) VALUES (?, ?, ?)",
-        ("aravindaksha", "abcd", "efgh"),
-    )
     conn.commit()
     return conn

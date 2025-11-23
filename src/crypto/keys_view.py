@@ -2,6 +2,7 @@ from secrets import token_hex
 
 import flet as ft
 from pycrypt.asymmetric import DH, RSAKey
+from pycrypt.symmetric import AES_ECB
 
 from crypto.base_view import BaseView
 from ui.components import (
@@ -22,6 +23,8 @@ class KeyManagement(BaseView):
 
         self._save_picker = ft.FilePicker()
         self.page.overlay.append(self._save_picker)
+
+        self.page.ecb = AES_ECB(bytes.fromhex(self.page.master_key))
 
     # --- Public view ---
     def view(self):
@@ -137,7 +140,10 @@ class KeyManagement(BaseView):
                 (self.page.username,),
             )
             rows = []
-            for rid, bits, key_hex, created_at in cur.fetchall():
+            for rid, bits, key_material, created_at in cur.fetchall():
+                key_material = (
+                    self.page.ecb.decrypt(bytes.fromhex(key_material)).hex().upper()
+                )
                 created_comp = self._safe_filename_component(str(created_at))
                 rows.append(
                     ft.DataRow(
@@ -146,21 +152,21 @@ class KeyManagement(BaseView):
                             ft.DataCell(ft.Text(str(bits))),
                             ft.DataCell(
                                 ft.Text(
-                                    key_hex,
+                                    key_material,
                                     selectable=True,
                                     max_lines=1,
                                     overflow=ft.TextOverflow.ELLIPSIS,
                                     width=520,
                                 )
                             ),
-                            ft.DataCell(self._copy_button(key_hex, "key")),
+                            ft.DataCell(self._copy_button(key_material, "key")),
                             ft.DataCell(
                                 IconButton(
                                     self.page,
                                     icon=ft.Icons.FILE_DOWNLOAD,
                                     tooltip="Download key",
                                     on_click=lambda _,
-                                    v=key_hex,
+                                    v=key_material,
                                     c=created_comp: self._save_text_to_file(
                                         v, f"aes{len(v) * 4}-{c}", ext="key"
                                     ),
@@ -192,7 +198,7 @@ class KeyManagement(BaseView):
             if not key_field.value or not self.conn:
                 return
             try:
-                kb = bytes.fromhex(key_field.value)
+                kb = self.page.ecb.encrypt(bytes.fromhex(key_field.value))
             except ValueError:
                 return
 
@@ -318,6 +324,8 @@ class KeyManagement(BaseView):
             )
             rows = []
             for rid, bits, pub_pem, priv_pem, created_at in cur.fetchall():
+                pub_pem = self.page.ecb.decrypt(pub_pem).decode(errors="replace")
+                priv_pem = self.page.ecb.decrypt(priv_pem).decode(errors="replace")
                 preview = pub_pem.splitlines()[1] if pub_pem else ""
                 created_comp = self._safe_filename_component(str(created_at))
 
@@ -405,13 +413,18 @@ class KeyManagement(BaseView):
             bits = int(size_dd.value)
             exists = self.conn.execute(
                 "SELECT 1 FROM user_rsa_keys WHERE username=? AND public_pem=?",
-                (self.page.username, pub_field.value),
+                (self.page.username, self.page.ecb.encrypt(pub_field.value.encode())),
             ).fetchone()
             if not exists:
                 self.conn.execute(
                     "INSERT INTO user_rsa_keys(username, bits, public_pem, private_pem) "
                     "VALUES(?, ?, ?, ?)",
-                    (self.page.username, bits, pub_field.value, priv_field.value),
+                    (
+                        self.page.username,
+                        bits,
+                        self.page.ecb.encrypt(pub_field.value.encode()),
+                        self.page.ecb.encrypt(priv_field.value.encode()),
+                    ),
                 )
                 self.conn.commit()
             refresh_rsa_table()
@@ -469,23 +482,21 @@ class KeyManagement(BaseView):
         )
 
         p_field = ft.TextField(
-            label="Prime (p) — hex",
+            label="Prime (hex)",
             multiline=True,
             max_lines=4,
             width=500,
             read_only=False,
-            prefix_icon=ft.Icons.SELF_IMPROVEMENT,
-            hint_text="Paste or generate prime p as hex (no 0x)",
+            prefix_icon=ft.Icons.STAR,
         )
 
         g_field = ft.TextField(
-            label="Generator (g) — hex",
+            label="Generator (hex)",
             multiline=True,
             max_lines=2,
             width=500,
             read_only=False,
-            prefix_icon=ft.Icons.SELF_IMPROVEMENT,
-            hint_text="Paste generator g as hex (no 0x)",
+            prefix_icon=ft.Icons.FUNCTIONS,
         )
 
         pub_field = ft.TextField(
@@ -637,13 +648,18 @@ class KeyManagement(BaseView):
             bits = int(size_dd.value)
             exists = self.conn.execute(
                 "SELECT 1 FROM user_dh_keys WHERE username=? AND public_pem=?",
-                (self.page.username, pub_field.value),
+                (self.page.username, self.page.ecb.encrypt(pub_field.value.encode())),
             ).fetchone()
             if not exists:
                 self.conn.execute(
                     "INSERT INTO user_dh_keys(username, bits, public_pem, private_pem) "
                     "VALUES(?, ?, ?, ?)",
-                    (self.page.username, bits, pub_field.value, priv_field.value),
+                    (
+                        self.page.username,
+                        bits,
+                        self.page.ecb.encrypt(pub_field.value.encode()),
+                        self.page.ecb.encrypt(priv_field.value.encode()),
+                    ),
                 )
                 self.conn.commit()
             refresh_dh_table()
@@ -658,6 +674,8 @@ class KeyManagement(BaseView):
             )
             rows = []
             for rid, bits, pub_pem, priv_pem, created_at in cur.fetchall():
+                pub_pem = self.page.ecb.decrypt(pub_pem).decode(errors="replace")
+                priv_pem = self.page.ecb.decrypt(priv_pem).decode(errors="replace")
                 preview = pub_pem.splitlines()[1] if pub_pem else ""
                 created_comp = self._safe_filename_component(str(created_at))
 
@@ -760,7 +778,7 @@ class KeyManagement(BaseView):
                 ft.ResponsiveRow(
                     [
                         ft.Container(
-                            ft.Column([p_field, ft.Divider(), g_field]),
+                            ft.Column([p_field, g_field]),
                             alignment=ft.alignment.center,
                             col={"sm": 6},
                         ),

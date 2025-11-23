@@ -70,6 +70,12 @@ def build_appbar(page: ft.Page, toggle_theme, color_change):
         border_radius=8,
     )
 
+    def _logout(e):
+        page.username = None
+        page.master_key = None
+        page.ecb = None
+        page.go("/")
+
     profile_menu = ft.PopupMenuButton(
         content=avatar,
         items=[
@@ -103,17 +109,7 @@ def build_appbar(page: ft.Page, toggle_theme, color_change):
                 content=ft.Row(
                     [ft.Icon(ft.Icons.LOGOUT), ft.Text("Logout")], spacing=12
                 ),
-                on_click=lambda e: page.open(
-                    ft.AlertDialog(
-                        title=ft.Text("Logout"),
-                        content=ft.Text("Logout screen not implemented"),
-                        actions=[
-                            ft.TextButton(
-                                "OK", on_click=lambda e: page.close(e.control.parent)
-                            )
-                        ],
-                    )
-                ),
+                on_click=_logout,
             ),
         ],
     )
