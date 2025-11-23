@@ -335,7 +335,9 @@ class KeyManagement(BaseView):
                                 )
                             ),
                             self._make_copy_cell(pub_pem, "public key"),
-                            self._make_copy_cell(priv_pem, "private key", ft.Icons.COPY_ALL),
+                            self._make_copy_cell(
+                                priv_pem, "private key", ft.Icons.COPY_ALL
+                            ),
                             ft.DataCell(
                                 IconButton(
                                     self.page,
@@ -466,6 +468,26 @@ class KeyManagement(BaseView):
             width=220,
         )
 
+        p_field = ft.TextField(
+            label="Prime (p) — hex",
+            multiline=True,
+            max_lines=4,
+            width=500,
+            read_only=False,
+            prefix_icon=ft.Icons.SELF_IMPROVEMENT,
+            hint_text="Paste or generate prime p as hex (no 0x)",
+        )
+
+        g_field = ft.TextField(
+            label="Generator (g) — hex",
+            multiline=True,
+            max_lines=2,
+            width=500,
+            read_only=False,
+            prefix_icon=ft.Icons.SELF_IMPROVEMENT,
+            hint_text="Paste generator g as hex (no 0x)",
+        )
+
         pub_field = ft.TextField(
             label="Public Key (PEM)",
             multiline=True,
@@ -493,7 +515,7 @@ class KeyManagement(BaseView):
             self.page, icon=ft.Icons.VISIBILITY_OFF, tooltip="Show / Hide Key"
         )
 
-        def toggle(_):
+        def _toggle_priv(_):
             priv_field.password = not priv_field.password
             toggle_btn.icon = (
                 ft.Icons.VISIBILITY
@@ -502,7 +524,7 @@ class KeyManagement(BaseView):
             )
             self.page.update()
 
-        toggle_btn.on_click = toggle
+        toggle_btn.on_click = _toggle_priv
         priv_field.suffix = ft.Row([copy_priv, toggle_btn], spacing=4, tight=True)
         pub_field.suffix = copy_pub
 
@@ -524,24 +546,90 @@ class KeyManagement(BaseView):
 
         prog = ft.ProgressRing(visible=False, width=16, height=16, stroke_width=2)
 
-        def generate_dh(_):
+        def _clean_hex(s: str) -> str:
+            return (s or "").strip().replace("\n", "").replace(" ", "")
+
+        def _parse_hex_to_int(hex_s: str):
+            try:
+                return int(hex_s, 16)
+            except Exception:
+                return None
+
+        def generate_params(_):
+            self._clear_errors(p_field, g_field)
+
             prog.visible = True
             self.page.update()
 
-            bits = int(size_dd.value)
+            try:
+                bits = int(size_dd.value)
+                params = DH.generate_parameters(key_size=bits)
 
-            params = DH.generate_parameters(key_size=bits)
-            priv = params.generate_private_key()
-            pub = priv.public_key()
+                p_int = params.p
+                g_int = params.g
 
-            pub_pem = pub.export_key()
-            priv_pem = priv.export_key()
+                p_field.value = hex(p_int)[2:].upper()
+                g_field.value = hex(g_int)[2:].upper()
+                pub_field.value = ""
+                priv_field.value = ""
 
-            pub_field.value = pub_pem
-            priv_field.value = priv_pem
+            except Exception as e:
+                self._snack(f"Parameter generation failed: {e}")
+            finally:
+                prog.visible = False
+                self.page.update()
 
-            prog.visible = False
+        def _build_params_from_fields():
+            p_hex = _clean_hex(p_field.value)
+            g_hex = _clean_hex(g_field.value)
+
+            if not p_hex or not g_hex:
+                return None
+
+            p_int = _parse_hex_to_int(p_hex)
+            g_int = _parse_hex_to_int(g_hex)
+
+            if p_int is None or g_int is None:
+                return None
+
+            try:
+                params = DH(p_int, g_int)
+                return params
+            except Exception:
+                return None
+
+        def generate_dh_keypair(_):
+            self._clear_errors(p_field, g_field)
+            prog.visible = True
             self.page.update()
+
+            params = _build_params_from_fields()
+            if params is None:
+                prog.visible = False
+                self.page.update()
+                if _clean_hex(p_field.value):
+                    g_field.error_text = "Invalid generator hex"
+                elif _clean_hex(g_field.value):
+                    p_field.error_text = "Invalid prime hex"
+                else:
+                    p_field.error_text = "No parameters present"
+                self.page.update()
+                return
+
+            try:
+                priv = params.generate_private_key()
+                pub = priv.public_key()
+                pub_pem = pub.export_key()
+                priv_pem = priv.export_key()
+                pub_field.value = pub_pem
+                priv_field.value = priv_pem
+            except Exception as e:
+                p_field.error_text = f"{e}"
+                pub_field.value = ""
+                priv_field.value = ""
+            finally:
+                prog.visible = False
+                self.page.update()
 
         def save_dh(_):
             if not pub_field.value or not priv_field.value or not self.conn:
@@ -587,7 +675,9 @@ class KeyManagement(BaseView):
                                 )
                             ),
                             self._make_copy_cell(pub_pem, "public key"),
-                            self._make_copy_cell(priv_pem, "private key", ft.Icons.COPY_ALL),
+                            self._make_copy_cell(
+                                priv_pem, "private key", ft.Icons.COPY_ALL
+                            ),
                             ft.DataCell(
                                 IconButton(
                                     self.page,
@@ -636,34 +726,47 @@ class KeyManagement(BaseView):
 
         refresh_dh_table()
 
+        generate_params_btn = PrimaryButton(
+            self.page,
+            "Generate DH Parameters",
+            icon=ft.Icons.GENERATING_TOKENS,
+            on_click=generate_params,
+        )
+
+        generate_keypair_btn = PrimaryButton(
+            self.page,
+            "Generate Keypair from Parameters",
+            icon=ft.Icons.KEY,
+            on_click=generate_dh_keypair,
+        )
+
+        save_keypair_btn = TonalButton(
+            self.page, "Save Keypair", icon=ft.Icons.SAVE, on_click=save_dh
+        )
+
         actions = ft.Row(
-            [
-                PrimaryButton(
-                    self.page,
-                    "Generate DH Keypair",
-                    icon=ft.Icons.GENERATING_TOKENS,
-                    on_click=generate_dh,
-                ),
-                TonalButton(self.page, "Save", icon=ft.Icons.SAVE, on_click=save_dh),
-                prog,
-            ],
-            spacing=GAP_MD,
-            wrap=True,
+            [generate_params_btn, generate_keypair_btn, save_keypair_btn, prog],
             alignment=ft.MainAxisAlignment.CENTER,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=GAP_MD,
         )
 
         return self.render_tab(
             [
-                section_title("DH Key Management"),
+                section_title("DH Key Management (parameters → keypairs)"),
                 size_dd,
                 actions,
                 ft.ResponsiveRow(
                     [
                         ft.Container(
-                            pub_field, alignment=ft.alignment.center, col={"sm": 6}
+                            ft.Column([p_field, ft.Divider(), g_field]),
+                            alignment=ft.alignment.center,
+                            col={"sm": 6},
                         ),
                         ft.Container(
-                            priv_field, alignment=ft.alignment.center, col={"sm": 6}
+                            ft.Column([pub_field, priv_field]),
+                            alignment=ft.alignment.center,
+                            col={"sm": 6},
                         ),
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
