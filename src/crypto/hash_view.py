@@ -45,7 +45,6 @@ class HashView(BaseView):
 
     # ----------------- helpers -----------------
     def _get_hash_constructor(self, alg_key: str):
-        """Return a constructor for the selected algorithm (SHA1 / SHA256)."""
         if alg_key == "SHA1":
             return SHA1
         return SHA256

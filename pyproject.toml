@@ -9,7 +9,7 @@ authors = [
 ]
 dependencies = [
   "flet==0.28.3",
-  "pycrypt-lib>=1.0.3",
+  "pycrypt-lib==1.1.3"
 ]
 
 [tool.flet]

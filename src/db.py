@@ -31,6 +31,7 @@ def connect_db():
         CREATE TABLE IF NOT EXISTS user_aes_keys(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL,
+            bits INTEGER NOT NULL,
             key_material BLOB NOT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (username) REFERENCES secura(username) ON DELETE CASCADE
@@ -45,6 +46,17 @@ def connect_db():
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (username) REFERENCES secura(username) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS user_dh_keys (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            bits INTEGER NOT NULL,
+            public_pem TEXT NOT NULL,
+            private_pem TEXT NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (username) REFERENCES secura(username) ON DELETE CASCADE
+        );
+
         COMMIT;
         """
     )
