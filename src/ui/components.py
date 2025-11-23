@@ -1,6 +1,6 @@
 import flet as ft
 
-from .theme import BTN_RADIUS, GAP_SM
+from .theme import BTN_RADIUS
 
 
 def button_style() -> ft.ButtonStyle:

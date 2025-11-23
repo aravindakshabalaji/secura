@@ -13,7 +13,7 @@ BTN_RADIUS = 12
 
 def build_theme() -> ft.Theme:
     return ft.Theme(
-        color_scheme_seed=ft.Colors.CYAN,
+        color_scheme_seed=ft.Colors.BLUE,
         use_material3=True,
         visual_density=ft.VisualDensity.COMFORTABLE,
     )

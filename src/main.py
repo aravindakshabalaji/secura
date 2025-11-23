@@ -7,12 +7,13 @@ from ui.theme import APP_TITLE, PADDING_APP, build_theme
 
 def main(page: ft.Page):
     page.title = APP_TITLE
-    page.theme_mode = ft.ThemeMode.SYSTEM
-    page.theme = build_theme()
     page.padding = PADDING_APP
     page.scroll = ft.ScrollMode.AUTO
     page.window_min_width = 900
     page.window_min_height = 600
+
+    page.theme_mode = ft.ThemeMode.SYSTEM
+    page.theme = build_theme()
 
     page.username = "aravindaksha"
     page.conn = connect_db()

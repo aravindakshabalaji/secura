@@ -1,6 +1,6 @@
 import flet as ft
 
-from ui.components import IconButton, toolbar_back
+from ui.components import toolbar_back
 from ui.theme import GAP_MD, PADDING_APP
 
 
@@ -35,15 +35,14 @@ class CryptoSuite:
             [
                 self._feature_box(
                     "AES Encrypt / Decrypt",
-                    on_click=lambda _: self.page.go("/crypto/aes-enc-dec"),
+                    on_click=lambda _: self.page.go("/crypto/aes"),
                 ),
                 self._feature_box(
-                    "RSA Encrypt / Decrypt",
-                    on_click=lambda _: self.page.go("/crypto/rsa-enc-dec"),
+                    "RSA Suite",
+                    on_click=lambda _: self.page.go("/crypto/rsa"),
                 ),
                 self._feature_box(
-                    "RSA Sign / Verify",
-                    on_click=lambda _: self.page.go("/crypto/rsa-sign-verify"),
+                    "Hashing", on_click=lambda _: self.page.go("/crypto/hash")
                 ),
                 self._feature_box(
                     "Key Management", on_click=lambda _: self.page.go("/crypto/keys")

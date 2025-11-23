@@ -3,17 +3,17 @@ import flet as ft
 from crypto.aes_view import AESEncryptDecrypt
 from crypto.keys_view import KeyManagement
 from crypto.rsa_view import RSAEncryptDecrypt
-from crypto.sign_view import RSASignVerify
 from crypto.suite_view import CryptoSuite
 from crypto.home import HomePage
+from crypto.hash_view import HashView
 
 ROUTES = {
     "/": HomePage,
     "/crypto": CryptoSuite,
-    "/crypto/aes-enc-dec": AESEncryptDecrypt,
-    "/crypto/rsa-sign-verify": RSASignVerify,
+    "/crypto/aes": AESEncryptDecrypt,
     "/crypto/keys": KeyManagement,
-    "/crypto/rsa-enc-dec": RSAEncryptDecrypt,
+    "/crypto/rsa": RSAEncryptDecrypt,
+    "/crypto/hash": HashView,
 }
 
 

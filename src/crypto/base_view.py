@@ -40,7 +40,7 @@ class BaseView:
                 target.error_text = f"Failed to import: {err}"
                 self.page.update()
 
-    def _key_field(self, label, hint_text, upload_tooltip, exts=["key"]):
+    def _key_field(self, label, hint_text, upload_tooltip="key", exts=["key"]):
         key_field = ft.TextField(
             label=label,
             multiline=True,
@@ -173,7 +173,7 @@ class BaseView:
             controls=[ft.Container(content, padding=20, expand=True)],
         )
 
-    def render_tab(self, content):
+    def render_tab(self, content, padding=10):
         col = ft.Column(
             content,
             spacing=GAP_MD,

@@ -36,7 +36,7 @@ class AESEncryptDecrypt(BaseView):
             ],
         )
 
-        return self.render_view(header, tabs, "/crypto/aes-enc-dec")
+        return self.render_view(header, tabs, "/crypto/aes")
 
     @staticmethod
     def _is_hex(text):
@@ -84,9 +84,11 @@ class AESEncryptDecrypt(BaseView):
             width=420,
             visible=False,
         )
+
         nonce_field = ft.TextField(
             prefix_icon=ft.Icons.TAG, label="Nonce (hex)", width=420, visible=False
         )
+
         aad_field = ft.TextField(
             prefix_icon=ft.Icons.STORAGE,
             label="AAD (hex)",
@@ -94,6 +96,8 @@ class AESEncryptDecrypt(BaseView):
             width=420,
             visible=False,
         )
+        aad_field.suffix = self._paste_button(aad_field)
+
         tag_field = ft.TextField(
             prefix_icon=ft.Icons.LOCAL_OFFER,
             label="Tag (hex)",
@@ -101,6 +105,7 @@ class AESEncryptDecrypt(BaseView):
             width=420,
             visible=False,
         )
+        tag_field.suffix = self._copy_button(tag_field, "tag")
 
         def gen_iv(_):
             iv_field.value = token_hex(16).upper()
@@ -520,7 +525,7 @@ class AESEncryptDecrypt(BaseView):
                         bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
                     ),
                     elevation=2,
-                    width=500,
+                    width=700,
                 ),
             ]
         )
