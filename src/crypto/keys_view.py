@@ -232,6 +232,7 @@ class KeyManagement(BaseView):
                 TonalButton(self.page, "Save", icon=ft.Icons.SAVE, on_click=save),
             ],
             spacing=GAP_MD,
+            wrap=True,
             alignment=ft.MainAxisAlignment.CENTER,
         )
 
@@ -329,7 +330,7 @@ class KeyManagement(BaseView):
         def _save_pem_to_file(pem: str, filename: str):
             plat = self._platform()
 
-            if plat in ("web", "mobile"):
+            if plat not in ("windows", "linux", "macos"):
                 self._show_not_supported("Downloading files")
                 return
 
@@ -479,6 +480,7 @@ class KeyManagement(BaseView):
                 prog,
             ],
             spacing=GAP_MD,
+            wrap=True,
             alignment=ft.MainAxisAlignment.CENTER,
         )
 

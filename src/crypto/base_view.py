@@ -1,6 +1,6 @@
 import flet as ft
 
-from ui.components import IconButton, vertical_scroll
+from ui.components import IconButton, toolbar_back, vertical_scroll
 from ui.theme import GAP_MD, surface_card
 
 
@@ -102,7 +102,7 @@ class BaseView:
         )
 
     def _copy(self, value):
-        self._snack("✅ Copied value")
+        self._snack("Copied value")
         self.page.set_clipboard(value)
 
     def _copy_field(self, field):
@@ -151,18 +151,7 @@ class BaseView:
         self.page.update()
 
     def render_header(self, title, back_route="/crypto"):
-        return ft.Row(
-            [
-                IconButton(
-                    self.page,
-                    icon=ft.Icons.ARROW_BACK,
-                    tooltip="Go Back",
-                    on_click=lambda _: self.page.go(back_route),
-                ),
-                ft.Text(title, size=26, weight=ft.FontWeight.BOLD),
-            ],
-            alignment=ft.MainAxisAlignment.START,
-        )
+        return toolbar_back(self.page, title, back_route)
 
     def render_tabs(self, content):
         return ft.Tabs(

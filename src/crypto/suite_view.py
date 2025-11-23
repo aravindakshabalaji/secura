@@ -1,6 +1,6 @@
 import flet as ft
 
-from ui.components import IconButton
+from ui.components import IconButton, toolbar_back
 from ui.theme import GAP_MD, PADDING_APP
 
 
@@ -29,15 +29,7 @@ class CryptoSuite:
         )
 
     def view(self) -> ft.View:
-        header = ft.Row(
-            [
-                IconButton(
-                    self.page, ft.Icons.ARROW_BACK, on_click=lambda _: self.page.go("/")
-                ),
-                ft.Text("🔐 Cryptographic Suite", size=26, weight=ft.FontWeight.BOLD),
-            ],
-            alignment=ft.MainAxisAlignment.START,
-        )
+        header = toolbar_back(self.page, "🔐 Cryptographic Suite", "/")
 
         grid = ft.ResponsiveRow(
             [

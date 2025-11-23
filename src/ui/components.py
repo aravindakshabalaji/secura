@@ -85,14 +85,20 @@ def toolbar_back(page: ft.Page, title: str, route: str) -> ft.Row:
         [
             IconButton(
                 page,
-                ft.Icons.ARROW_BACK,
+                icon=ft.Icons.ARROW_BACK,
                 tooltip="Go Back",
                 on_click=lambda _: page.go(route),
             ),
-            ft.Text(title, size=28, weight=ft.FontWeight.BOLD),
+            ft.Text(
+                title,
+                size=26,
+                weight=ft.FontWeight.BOLD,
+                expand=1,
+                max_lines=None,
+                overflow=ft.TextOverflow.VISIBLE,
+            ),
         ],
         alignment=ft.MainAxisAlignment.START,
-        spacing=GAP_SM,
     )
 
 
