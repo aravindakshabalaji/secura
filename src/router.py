@@ -1,11 +1,11 @@
 import flet as ft
 
 from crypto.aes_view import AESEncryptDecrypt
+from crypto.hash_view import HashView
+from crypto.home import HomePage
 from crypto.keys_view import KeyManagement
 from crypto.rsa_view import RSAEncryptDecrypt
 from crypto.suite_view import CryptoSuite
-from crypto.home import HomePage
-from crypto.hash_view import HashView
 
 ROUTES = {
     "/": HomePage,
@@ -23,6 +23,7 @@ def resolve_route(page: ft.Page, route: str) -> ft.View:
         return cls(page).view()
 
     return ft.View(
+        appbar=page.appbar,
         route="/404",
         controls=[
             ft.Column(

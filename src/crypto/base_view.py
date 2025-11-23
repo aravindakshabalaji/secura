@@ -170,6 +170,8 @@ class BaseView:
 
         return ft.View(
             route,
+            appbar=self.page.appbar,
+            floating_action_button=self.page.floating_action_button,
             controls=[ft.Container(content, padding=20, expand=True)],
         )
 

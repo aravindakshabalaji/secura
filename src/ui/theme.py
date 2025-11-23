@@ -11,9 +11,9 @@ CARD_RADIUS = 14
 BTN_RADIUS = 12
 
 
-def build_theme() -> ft.Theme:
+def build_theme(color_seed=ft.Colors.BLUE) -> ft.Theme:
     return ft.Theme(
-        color_scheme_seed=ft.Colors.BLUE,
+        color_scheme_seed=color_seed,
         use_material3=True,
         visual_density=ft.VisualDensity.COMFORTABLE,
     )

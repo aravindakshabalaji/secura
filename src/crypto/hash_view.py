@@ -95,7 +95,7 @@ class HashView(BaseView):
             self.page.update()
 
         compute_btn = PrimaryButton(
-            self.page, "Compute", icon=ft.Icons.NUMBERS, on_click=compute_hash
+            self.page, "Hash", icon=ft.Icons.NUMBERS, on_click=compute_hash
         )
 
         return self.render_tab(
@@ -207,7 +207,7 @@ class HashView(BaseView):
                 ),
                 PrimaryButton(
                     self.page,
-                    "Compute Hash",
+                    "Hash",
                     icon=ft.Icons.NUMBERS,
                     on_click=compute_file_hash,
                 ),

@@ -62,4 +62,9 @@ class CryptoSuite:
             padding=PADDING_APP,
             alignment=ft.alignment.top_center,
         )
-        return ft.View("/crypto", [content])
+        return ft.View(
+            "/crypto",
+            [content],
+            appbar=self.page.appbar,
+            floating_action_button=self.page.floating_action_button,
+        )

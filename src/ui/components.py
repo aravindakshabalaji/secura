@@ -41,8 +41,8 @@ def PrimaryButton(
 
 def TonalButton(
     page: ft.Page, text: str, icon=None, on_click=None
-) -> ft.FilledTonalButton:
-    return ft.FilledTonalButton(
+) -> ft.OutlinedButton:
+    return ft.OutlinedButton(
         text,
         icon=icon,
         style=button_style(),
