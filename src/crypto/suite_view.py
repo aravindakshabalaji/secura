@@ -1,6 +1,6 @@
 import flet as ft
 
-from ui.components import toolbar_back, vertical_scroll
+from ui.components import vertical_scroll
 from ui.theme import GAP_MD, PADDING_APP
 
 

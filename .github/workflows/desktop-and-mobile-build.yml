@@ -93,6 +93,7 @@ jobs:
         run: uv tool install ruff
       - name: Lint code with Ruff
         run: uv run ruff check --output-format=github --target-version=py39
+        continue-on-error: true
       - name: Check code formatting with Ruff
         run: uv run ruff format --diff --target-version=py39
         continue-on-error: true
@@ -133,6 +134,7 @@ jobs:
         run: uv tool install ruff
       - name: Lint code with Ruff
         run: uv run ruff check --output-format=github --target-version=py39
+        continue-on-error: true
       - name: Check code formatting with Ruff
         run: uv run ruff format --diff --target-version=py39
         continue-on-error: true

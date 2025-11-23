@@ -67,7 +67,7 @@ class HomePage:
             self.page.master_key = hkdf(password_bytes, 32, salt).hex()
 
         self.page.appbar = build_appbar(self.page, self.toggle_theme, self.color_change)
-        
+
         self.page.go("/crypto")
 
     def view(self) -> ft.View:

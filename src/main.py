@@ -1,6 +1,5 @@
 import flet as ft
 
-from appbar import build_appbar
 from db import connect_db
 from router import resolve_route
 from ui.theme import APP_TITLE, PADDING_APP, build_theme
