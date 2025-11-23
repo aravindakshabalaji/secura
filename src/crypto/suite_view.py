@@ -1,6 +1,6 @@
 import flet as ft
 
-from ui.components import toolbar_back
+from ui.components import toolbar_back, vertical_scroll
 from ui.theme import GAP_MD, PADDING_APP
 
 
@@ -58,7 +58,11 @@ class CryptoSuite:
 
         content = ft.Container(
             ft.Column(
-                [ft.SafeArea(content=header, top=True), ft.Divider(), grid],
+                [
+                    ft.SafeArea(content=header, top=True),
+                    ft.Divider(),
+                    vertical_scroll(grid),
+                ],
                 spacing=GAP_MD,
             ),
             expand=True,

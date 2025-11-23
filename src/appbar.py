@@ -48,7 +48,11 @@ def build_appbar(page: ft.Page, toggle_theme, color_change):
     actions.append(color_picker)
     actions.append(
         ft.IconButton(
-            ft.Icons.LIGHT_MODE_OUTLINED, on_click=toggle_theme, tooltip="Toggle theme"
+            ft.Icons.DARK_MODE_OUTLINED
+            if page.client_storage.get("secura.light_mode")
+            else ft.Icons.LIGHT_MODE_OUTLINED,
+            on_click=toggle_theme,
+            tooltip="Toggle theme",
         )
     )
 

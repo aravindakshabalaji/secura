@@ -735,7 +735,7 @@ class KeyManagement(BaseView):
 
         generate_keypair_btn = PrimaryButton(
             self.page,
-            "Generate Keypair from Parameters",
+            "Generate DH Keypair",
             icon=ft.Icons.KEY,
             on_click=generate_dh_keypair,
         )
@@ -749,11 +749,12 @@ class KeyManagement(BaseView):
             alignment=ft.MainAxisAlignment.CENTER,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=GAP_MD,
+            wrap=True,
         )
 
         return self.render_tab(
             [
-                section_title("DH Key Management (parameters → keypairs)"),
+                section_title("DH Key Management"),
                 size_dd,
                 actions,
                 ft.ResponsiveRow(

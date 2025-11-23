@@ -4,8 +4,8 @@ import flet as ft
 from pycrypt.asymmetric import DHPublicKey
 
 from crypto.base_view import BaseView
-from ui.components import IconButton, PrimaryButton
-from ui.theme import section_title
+from ui.components import IconButton, PrimaryButton, vertical_scroll
+from ui.theme import GAP_MD, section_title, surface_card
 
 
 class DHEncryptDecrypt(BaseView):
@@ -41,28 +41,35 @@ class DHEncryptDecrypt(BaseView):
             hint_text="",
         )
         length_field = ft.TextField(
-            label="Derived key length (bytes)",
+            label="Derived Key Length (bytes)",
             hint_text="Enter number",
             value="32",
-            width=220,
+            keyboard_type=ft.KeyboardType.NUMBER,
         )
+        length_field.suffix = self._paste_button(length_field)
 
         salt_field = ft.TextField(
             prefix_icon=ft.Icons.STORAGE,
             label="Salt (hex)",
             hint_text="64 characters",
-            width=420,
         )
 
         def gen_salt(_):
             salt_field.value = token_hex(32).upper()
             self.page.update()
 
-        salt_field.suffix = IconButton(
-            self.page,
-            icon=ft.Icons.CACHED,
-            tooltip="Generate 32-byte salt",
-            on_click=gen_salt,
+        salt_field.suffix = ft.Row(
+            [
+                self._copy_button(salt_field),
+                IconButton(
+                    self.page,
+                    icon=ft.Icons.CACHED,
+                    tooltip="Generate 32-byte salt",
+                    on_click=gen_salt,
+                ),
+            ],
+            spacing=4,
+            tight=True,
         )
 
         derived_key_field = ft.TextField(
@@ -72,8 +79,6 @@ class DHEncryptDecrypt(BaseView):
             read_only=True,
         )
         derived_key_field.suffix = self._copy_button(derived_key_field, "derived")
-
-        warning_msg = ft.Text("", color=ft.Colors.AMBER_700, visible=False)
 
         def import_peer_public(raw: str):
             r = (raw or "").strip()
@@ -86,12 +91,10 @@ class DHEncryptDecrypt(BaseView):
                     peer_pub = DHPublicKey.from_bytes(b)
                     return peer_pub
                 except Exception as e:
-                    raise ValueError(f"Unable to parse peer public key: {e}")
+                    pub_key_field.error_text = f"Unable to parse peer public key: {e}"
 
         def exchange_click(_):
-            self._clear_errors(
-                priv_key_field, pub_key_field, derived_key_field, warning=warning_msg
-            )
+            self._clear_errors(priv_key_field, pub_key_field, derived_key_field)
             derived_key_field.value = ""
 
             if not (priv_key_field.value or "").strip():
@@ -121,45 +124,30 @@ class DHEncryptDecrypt(BaseView):
                 return
 
             try:
-                shared = priv.exchange(peer_pub)
-            except Exception as e:
-                derived_key_field.error_text = f"Exchange error: {e}"
-                self.page.update()
-                return
-
-            try:
                 length = int(length_field.value)
                 if length <= 0:
                     raise ValueError("length must be positive")
             except Exception as e:
-                derived_key_field.error_text = f"Invalid length: {e}"
+                length_field.error_text = f"Invalid length: {e}"
                 self.page.update()
                 return
 
             salt = None
-            if salt_field.value and self._is_hex(salt_field.value):
+            if salt_field.value:
+                if not self._is_hex(salt_field.value):
+                    salt_field.error_text = "Invalid salt value"
+                    self.page.update()
+                    return
                 salt = bytes.fromhex(salt_field.value.strip())
             else:
                 salt = None
 
             try:
-                from pycrypt.kdf import HKDF
-
-                info = b"dh-derived-key"
-                derived = HKDF(shared, length=length, salt=salt, info=info)
-            except Exception:
-                import hashlib
-
-                full = hashlib.sha256(shared + (salt or b"")).digest()
-                if length <= len(full):
-                    derived = full[:length]
-                else:
-                    out = full
-                    prev = full
-                    while len(out) < length:
-                        prev = hashlib.sha256(prev + shared + (salt or b"")).digest()
-                        out += prev
-                    derived = out[:length]
+                derived = priv.exchange(peer_pub, length=length, salt=salt)
+            except Exception as e:
+                derived_key_field.error_text = f"Exchange error: {e}"
+                self.page.update()
+                return
 
             derived_key_field.value = derived.hex().upper()
             self.page.update()
@@ -171,26 +159,34 @@ class DHEncryptDecrypt(BaseView):
             on_click=exchange_click,
         )
 
-        return self.render_tab(
-            [
-                section_title("DH Key Exchange"),
-                ft.ResponsiveRow(
+        return vertical_scroll(
+            surface_card(
+                ft.Column(
                     [
-                        ft.Container(priv_key_field, col={"sm": 6}),
-                        ft.Container(pub_key_field, col={"sm": 6}),
+                        section_title("DH Key Exchange"),
+                        ft.ResponsiveRow(
+                            [
+                                ft.Container(priv_key_field, col={"sm": 6}),
+                                ft.Container(pub_key_field, col={"sm": 6}),
+                            ],
+                            spacing=12,
+                            alignment=ft.alignment.center,
+                            width=1000,
+                        ),
+                        ft.ResponsiveRow(
+                            [
+                                ft.Container(length_field, col={"sm": 3}),
+                                ft.Container(salt_field, col={"sm": 9}),
+                            ],
+                            spacing=12,
+                            alignment=ft.alignment.center,
+                            width=1000,
+                        ),
+                        buttons,
+                        derived_key_field,
                     ],
-                    spacing=12,
-                    alignment=ft.alignment.center,
-                ),
-                ft.ResponsiveRow(
-                    [
-                        ft.Container(length_field, col={"sm": 6}),
-                        ft.Container(salt_field, col={"sm": 6}),
-                    ],
-                    spacing=12,
-                    alignment=ft.alignment.center,
-                ),
-                buttons,
-                derived_key_field,
-            ]
+                    spacing=GAP_MD,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                )
+            )
         )

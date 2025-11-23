@@ -117,17 +117,32 @@ class AESEncryptDecrypt(BaseView):
             nonce_field.value = token_hex(size).upper()
             self.page.update()
 
-        iv_field.suffix = IconButton(
-            self.page,
-            icon=ft.Icons.CACHED,
-            tooltip="Generate random IV",
-            on_click=gen_iv,
+        iv_field.suffix = ft.Row(
+            [
+                self._copy_button(iv_field),
+                IconButton(
+                    self.page,
+                    icon=ft.Icons.CACHED,
+                    tooltip="Generate random IV",
+                    on_click=gen_iv,
+                ),
+            ],
+            spacing=4,
+            tight=True,
         )
-        nonce_field.suffix = IconButton(
-            self.page,
-            icon=ft.Icons.CACHED,
-            tooltip="Generate random nonce",
-            on_click=gen_nonce,
+
+        nonce_field.suffix = ft.Row(
+            [
+                self._copy_button(nonce_field),
+                IconButton(
+                    self.page,
+                    icon=ft.Icons.CACHED,
+                    tooltip="Generate random nonce",
+                    on_click=gen_nonce,
+                ),
+            ],
+            spacing=4,
+            tight=True,
         )
 
         input_field = ft.TextField(
