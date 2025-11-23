@@ -1,6 +1,7 @@
 import flet as ft
 
 from crypto.aes_view import AESEncryptDecrypt
+from crypto.dh_view import DHEncryptDecrypt
 from crypto.hash_view import HashView
 from crypto.home import HomePage
 from crypto.keys_view import KeyManagement
@@ -14,6 +15,7 @@ ROUTES = {
     "/crypto/keys": KeyManagement,
     "/crypto/rsa": RSAEncryptDecrypt,
     "/crypto/hash": HashView,
+    "/crypto/dh": DHEncryptDecrypt,
 }
 
 

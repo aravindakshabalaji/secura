@@ -45,6 +45,9 @@ class CryptoSuite:
                     "Hashing", on_click=lambda _: self.page.go("/crypto/hash")
                 ),
                 self._feature_box(
+                    "DH Key Exchange", on_click=lambda _: self.page.go("/crypto/dh")
+                ),
+                self._feature_box(
                     "Key Management", on_click=lambda _: self.page.go("/crypto/keys")
                 ),
             ],
