@@ -23,12 +23,7 @@ class HomePage:
             self.page.client_storage.set("secura.light_mode", False)
             e.control.icon = ft.Icons.LIGHT_MODE_OUTLINED
 
-        self.page.update()
-
-    def color_change(self, e):
-        color = e.control.content.color
-        self.page.client_storage.set("secura.color_scheme", color)
-        self.page.theme = build_theme(color)
+        self.page.theme = build_theme(self.page.theme_mode)
         self.page.update()
 
     def enter_app(self, e):
@@ -66,7 +61,7 @@ class HomePage:
             self.page.username = username
             self.page.master_key = hkdf(password_bytes, 32, salt).hex()
 
-        self.page.appbar = build_appbar(self.page, self.toggle_theme, self.color_change)
+        self.page.appbar = build_appbar(self.page, self.toggle_theme)
 
         self.page.go("/crypto")
 

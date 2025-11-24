@@ -50,34 +50,12 @@ def TonalButton(
     )
 
 
-def DangerButton(
-    page: ft.Page, text: str, icon=None, on_click=None
-) -> ft.ElevatedButton:
-    return ft.ElevatedButton(
-        text,
-        icon=icon,
-        style=button_style(),
-        bgcolor=ft.Colors.RED_700,
-        color=ft.Colors.WHITE,
-        on_click=_generate_click_event(page, on_click),
-    )
-
-
 def IconButton(page: ft.Page, *args, **kwargs) -> ft.IconButton:
     on_click = kwargs.pop("on_click", None)
 
     kwargs["on_click"] = _generate_click_event(page, on_click)
 
     return ft.IconButton(*args, **kwargs)
-
-
-def IconTextButton(page: ft.Page, text: str, icon, on_click=None) -> ft.TextButton:
-    return ft.TextButton(
-        text,
-        icon=icon,
-        style=button_style(),
-        on_click=_generate_click_event(page, on_click),
-    )
 
 
 def TextField(*args, **kwargs) -> ft.TextField:

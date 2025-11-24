@@ -148,7 +148,7 @@ class AESEncryptDecrypt(BaseView):
         input_field = TextField(
             prefix_icon=ft.Icons.INPUT,
             label="Input",
-            hint_text="Plaintext for encrypt / Ciphertext hex for decrypt",
+            hint_text="Plaintext / Hex Ciphertext",
             multiline=True,
             max_lines=6,
             width=500,

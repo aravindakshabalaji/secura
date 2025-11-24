@@ -3,7 +3,7 @@ import flet as ft
 from ui.components import TonalButton
 
 
-def build_appbar(page: ft.Page, toggle_theme, color_change):
+def build_appbar(page: ft.Page, toggle_theme):
     width = page.window.width
     compact = width < 700
 
@@ -22,32 +22,8 @@ def build_appbar(page: ft.Page, toggle_theme, color_change):
         alignment=ft.MainAxisAlignment.CENTER,
     )
 
-    color_picker = ft.PopupMenuButton(
-        icon=ft.Icons.PALETTE_OUTLINED,
-        items=[
-            ft.PopupMenuItem(
-                content=ft.Text("Blue", color=ft.Colors.BLUE), on_click=color_change
-            ),
-            ft.PopupMenuItem(
-                content=ft.Text("Indigo", color=ft.Colors.INDIGO), on_click=color_change
-            ),
-            ft.PopupMenuItem(
-                content=ft.Text("Deep Orange", color=ft.Colors.DEEP_ORANGE),
-                on_click=color_change,
-            ),
-            ft.PopupMenuItem(
-                content=ft.Text("Purple", color=ft.Colors.PURPLE), on_click=color_change
-            ),
-            ft.PopupMenuItem(
-                content=ft.Text("Blue Grey", color=ft.Colors.BLUE_GREY),
-                on_click=color_change,
-            ),
-        ],
-    )
-
     actions = []
 
-    actions.append(color_picker)
     actions.append(
         ft.IconButton(
             ft.Icons.DARK_MODE_OUTLINED

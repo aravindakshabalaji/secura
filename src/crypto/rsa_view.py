@@ -141,7 +141,7 @@ class RSAEncryptDecrypt(BaseView):
             if self._text_pair == "Encrypt / Decrypt":
                 input_field.label = "Input"
                 input_field.hint_text = (
-                    "Plaintext for encrypt / Ciphertext hex for decrypt"
+                    "Plaintext / Hex Ciphertext"
                 )
 
                 output_field.label = "Output"

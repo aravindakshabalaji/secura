@@ -14,14 +14,14 @@ def main(page: ft.Page):
 
     page.fonts = {
         "Inter": "/fonts/Inter.ttc",
-        "JetBrains Mono": "/fonts/JetBrainsMono-Regular.ttf"
+        "JetBrains Mono": "/fonts/JetBrainsMono-Regular.ttf",
     }
     page.theme_mode = (
         ft.ThemeMode.LIGHT
         if page.client_storage.get("secura.light_mode")
         else ft.ThemeMode.DARK
     )
-    page.theme = build_theme(page.client_storage.get("secura.color_scheme"))
+    page.theme = build_theme(page.theme_mode)
 
     page.conn = connect_db()
 

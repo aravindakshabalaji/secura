@@ -7,6 +7,7 @@ from crypto.home import HomePage
 from crypto.keys_view import KeyManagement
 from crypto.rsa_view import RSAEncryptDecrypt
 from crypto.suite_view import CryptoSuite
+from ui.components import PrimaryButton
 
 ROUTES = {
     "/": HomePage,
@@ -31,7 +32,7 @@ def resolve_route(page: ft.Page, route: str) -> ft.View:
             ft.Column(
                 [
                     ft.Text("404 • Page not found", size=24, color=ft.Colors.RED),
-                    ft.FilledButton("Go Home", on_click=lambda _: page.go("/")),
+                    PrimaryButton(page, "Go Home", on_click=lambda _: page.go("/")),
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 tight=True,
