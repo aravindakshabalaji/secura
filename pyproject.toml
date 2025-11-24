@@ -1,8 +1,9 @@
 [project]
 name = "secura"
-version = "0.1.0"
-description = ""
+version = "0.9.0"
+description = "An educational desktop & mobile crypto toolkit application written in Python + Flet"
 readme = "README.md"
+license = "GPL-3.0-or-later"
 requires-python = ">=3.9"
 authors = [
     { name = "Aravindaksha Balaji", email = "aravindakshabalaji@gmail.com" },
@@ -16,6 +17,7 @@ dependencies = [
 # org name in reverse domain name notation, e.g. "com.mycompany".
 # Combined with project.name to build bundle ID for iOS and Android apps
 org = "com.secura"
+build_number = 1001
 
 # project display name that is used as an app title on Android and iOS home screens,
 # shown in window titles and about app dialogs on desktop.
