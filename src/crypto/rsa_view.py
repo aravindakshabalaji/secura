@@ -7,7 +7,7 @@ from pycrypt.asymmetric import RSAKey
 from pycrypt.symmetric import AES_CTR
 
 from crypto.base_view import BaseView
-from ui.components import IconButton, PrimaryButton, TonalButton
+from ui.components import IconButton, PrimaryButton, TonalButton, TextField
 from ui.theme import GAP_MD, section_title
 
 
@@ -47,7 +47,7 @@ class RSAEncryptDecrypt(BaseView):
         return self.render_view(header, tabs, "/crypto/rsa")
 
     # ---------- Helpers ----------
-    def _fill_from_output(self, input_field: ft.TextField, output_field: ft.TextField):
+    def _fill_from_output(self, input_field: TextField, output_field: TextField):
         input_field.value = output_field.value or ""
         self.page.update()
 
@@ -106,17 +106,16 @@ class RSAEncryptDecrypt(BaseView):
             options=[ft.dropdown.Option(p) for p in self.PAIRS],
         )
 
-        input_field = ft.TextField(
+        input_field = TextField(
             prefix_icon=ft.Icons.INPUT,
             label="Input",
-            hint_text="Plaintext for encrypt/sign — Ciphertext hex for decrypt — Signature hex for verify",
             multiline=True,
             max_lines=6,
             width=500,
         )
         input_field.suffix = self._paste_button(input_field)
 
-        output_field = ft.TextField(
+        output_field = TextField(
             prefix_icon=ft.Icons.OUTPUT,
             label="Output",
             multiline=True,
@@ -125,7 +124,7 @@ class RSAEncryptDecrypt(BaseView):
             read_only=True,
         )
 
-        signature_field = ft.TextField(
+        signature_field = TextField(
             prefix_icon=ft.Icons.VERIFIED_OUTLINED,
             label="Signature (hex)",
             multiline=True,
@@ -142,7 +141,7 @@ class RSAEncryptDecrypt(BaseView):
             if self._text_pair == "Encrypt / Decrypt":
                 input_field.label = "Input"
                 input_field.hint_text = (
-                    "Plaintext for encrypt — Ciphertext hex for decrypt"
+                    "Plaintext for encrypt / Ciphertext hex for decrypt"
                 )
 
                 output_field.label = "Output"

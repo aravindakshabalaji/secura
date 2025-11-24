@@ -4,7 +4,7 @@ import flet as ft
 from pycrypt.asymmetric import DHPublicKey
 
 from crypto.base_view import BaseView
-from ui.components import IconButton, PrimaryButton, vertical_scroll
+from ui.components import IconButton, PrimaryButton, TextField, vertical_scroll
 from ui.theme import GAP_MD, section_title, surface_card
 
 
@@ -40,7 +40,7 @@ class DHEncryptDecrypt(BaseView):
             exts=["pub.pem"],
             hint_text="",
         )
-        length_field = ft.TextField(
+        length_field = TextField(
             label="Derived Key Length (bytes)",
             hint_text="Enter number",
             value="32",
@@ -48,7 +48,7 @@ class DHEncryptDecrypt(BaseView):
         )
         length_field.suffix = self._paste_button(length_field)
 
-        salt_field = ft.TextField(
+        salt_field = TextField(
             prefix_icon=ft.Icons.STORAGE,
             label="Salt (hex)",
             hint_text="64 characters",
@@ -72,7 +72,7 @@ class DHEncryptDecrypt(BaseView):
             tight=True,
         )
 
-        derived_key_field = ft.TextField(
+        derived_key_field = TextField(
             prefix_icon=ft.Icons.KEY,
             label="Derived Key (hex)",
             width=700,

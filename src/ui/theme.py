@@ -16,6 +16,7 @@ def build_theme(color_seed=ft.Colors.BLUE) -> ft.Theme:
         color_scheme_seed=color_seed,
         use_material3=True,
         visual_density=ft.VisualDensity.COMFORTABLE,
+        font_family="Inter",
     )
 
 

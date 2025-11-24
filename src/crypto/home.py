@@ -4,7 +4,7 @@ import flet as ft
 from pycrypt.hash import SHA256, hkdf
 
 from appbar import build_appbar
-from ui.components import PrimaryButton
+from ui.components import PrimaryButton, TextField
 from ui.theme import CARD_RADIUS, GAP_MD, build_theme, section_title
 
 
@@ -71,8 +71,8 @@ class HomePage:
         self.page.go("/crypto")
 
     def view(self) -> ft.View:
-        username_field = ft.TextField(label="Username", prefix_icon=ft.Icons.PERSON)
-        password_field = ft.TextField(
+        username_field = TextField(label="Username", prefix_icon=ft.Icons.PERSON)
+        password_field = TextField(
             label="Password",
             prefix_icon=ft.Icons.PASSWORD,
             password=True,

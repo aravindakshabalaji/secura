@@ -8,6 +8,7 @@ from crypto.base_view import BaseView
 from ui.components import (
     IconButton,
     PrimaryButton,
+    TextField,
     TonalButton,
     scrollable_table,
     vertical_scroll,
@@ -90,7 +91,7 @@ class KeyManagement(BaseView):
             width=220,
         )
 
-        key_field = ft.TextField(
+        key_field = TextField(
             label="Key (hex)",
             read_only=True,
             width=600,
@@ -258,7 +259,7 @@ class KeyManagement(BaseView):
             width=220,
         )
 
-        pub_field = ft.TextField(
+        pub_field = TextField(
             label="Public Key (PEM)",
             multiline=True,
             max_lines=6,
@@ -267,7 +268,7 @@ class KeyManagement(BaseView):
             prefix_icon=ft.Icons.KEY,
         )
 
-        priv_field = ft.TextField(
+        priv_field = TextField(
             label="Private Key (PEM)",
             multiline=True,
             max_lines=6,
@@ -481,7 +482,7 @@ class KeyManagement(BaseView):
             width=220,
         )
 
-        p_field = ft.TextField(
+        p_field = TextField(
             label="Prime (hex)",
             multiline=True,
             max_lines=4,
@@ -490,7 +491,7 @@ class KeyManagement(BaseView):
             prefix_icon=ft.Icons.STAR,
         )
 
-        g_field = ft.TextField(
+        g_field = TextField(
             label="Generator (hex)",
             multiline=True,
             max_lines=2,
@@ -499,7 +500,7 @@ class KeyManagement(BaseView):
             prefix_icon=ft.Icons.FUNCTIONS,
         )
 
-        pub_field = ft.TextField(
+        pub_field = TextField(
             label="Public Key (PEM)",
             multiline=True,
             max_lines=8,
@@ -508,7 +509,7 @@ class KeyManagement(BaseView):
             prefix_icon=ft.Icons.KEY,
         )
 
-        priv_field = ft.TextField(
+        priv_field = TextField(
             label="Private Key (PEM)",
             multiline=True,
             max_lines=8,
@@ -641,6 +642,9 @@ class KeyManagement(BaseView):
             finally:
                 prog.visible = False
                 self.page.update()
+        
+        p_field.suffix = IconButton(self.page, ft.Icons.SYNC, on_click=generate_params)
+        g_field.suffix = IconButton(self.page, ft.Icons.SYNC, on_click=generate_params)
 
         def save_dh(_):
             if not pub_field.value or not priv_field.value or not self.conn:

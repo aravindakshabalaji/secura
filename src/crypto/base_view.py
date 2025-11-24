@@ -1,6 +1,6 @@
 import flet as ft
 
-from ui.components import IconButton, toolbar_back, vertical_scroll
+from ui.components import IconButton, TextField, toolbar_back, vertical_scroll
 from ui.theme import GAP_MD, surface_card
 
 
@@ -14,7 +14,7 @@ class BaseView:
 
         self.page.overlay.append(self.key_picker)
 
-    def _pick_key_for_field(self, field: ft.TextField, exts):
+    def _pick_key_for_field(self, field: TextField, exts):
         self._key_field_target = field
         self.key_picker.pick_files(
             allow_multiple=False,
@@ -41,7 +41,7 @@ class BaseView:
                 self.page.update()
 
     def _key_field(self, label, hint_text, upload_tooltip="key", exts=["key"]):
-        key_field = ft.TextField(
+        key_field = TextField(
             label=label,
             multiline=True,
             max_lines=8,
@@ -86,7 +86,7 @@ class BaseView:
 
         return key_field
 
-    def _paste_field(self, field: ft.TextField):
+    def _paste_field(self, field: TextField):
         try:
             field.value = self.page.get_clipboard()
         except Exception:
@@ -115,7 +115,7 @@ class BaseView:
             icon,
             tooltip=f"Copy {valuename}",
             on_click=lambda _: self._copy_field(value)
-            if isinstance(value, ft.TextField)
+            if isinstance(value, TextField)
             else self._copy(value),
         )
 
@@ -142,7 +142,7 @@ class BaseView:
         self.page.open(ft.SnackBar(ft.Text(text)))
         self.page.update()
 
-    def _clear_errors(self, *fields: ft.TextField, warning: ft.Text | None = None):
+    def _clear_errors(self, *fields: TextField, warning: ft.Text | None = None):
         for f in fields:
             f.error_text = None
         if warning is not None:

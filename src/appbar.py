@@ -1,5 +1,7 @@
 import flet as ft
 
+from ui.components import TonalButton
+
 
 def build_appbar(page: ft.Page, toggle_theme, color_change):
     width = page.window.width
@@ -60,7 +62,9 @@ def build_appbar(page: ft.Page, toggle_theme, color_change):
         ft.Row(
             [
                 ft.CircleAvatar(
-                    content=ft.Text("AB", weight=ft.FontWeight.W_700),
+                    content=ft.Text(
+                        page.username[0].upper(), weight=ft.FontWeight.W_700
+                    ),
                     foreground_image_src=f"https://github.com/identicons/{page.username}.png",
                 )
             ]
@@ -76,6 +80,36 @@ def build_appbar(page: ft.Page, toggle_theme, color_change):
         page.ecb = None
         page.go("/")
 
+    def _profile(_):
+        def close_dlg(_):
+            control.open = False
+            page.update()
+
+        control = ft.AlertDialog(
+            visible=True,
+            content=ft.Container(
+                ft.Column(
+                    [
+                        ft.CircleAvatar(
+                            content=ft.Text(
+                                page.username[0].upper(), weight=ft.FontWeight.W_700
+                            ),
+                            foreground_image_src=f"https://github.com/identicons/{page.username}.png",
+                            width=100,
+                            height=100,
+                        ),
+                        ft.Divider(),
+                        ft.Text(value=f"Welcome, {page.username}!"),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                height=250,
+            ),
+            actions=[TonalButton(page, "Close", ft.Icons.CANCEL, close_dlg)],
+        )
+        page.open(control)
+
     profile_menu = ft.PopupMenuButton(
         content=avatar,
         items=[
@@ -86,6 +120,8 @@ def build_appbar(page: ft.Page, toggle_theme, color_change):
                         ft.Divider(height=1),
                     ],
                     tight=True,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
                 on_click=lambda e: None,
             ),
@@ -93,21 +129,15 @@ def build_appbar(page: ft.Page, toggle_theme, color_change):
                 content=ft.Row(
                     [ft.Icon(ft.Icons.PERSON), ft.Text("View profile")], spacing=12
                 ),
-                on_click=lambda e: page.open(
-                    ft.AlertDialog(
-                        title=ft.Text("Profile"),
-                        content=ft.Text("Profile screen not implemented"),
-                        actions=[
-                            ft.TextButton(
-                                "OK", on_click=lambda e: page.close(e.control.parent)
-                            )
-                        ],
-                    )
-                ),
+                on_click=_profile,
             ),
             ft.PopupMenuItem(
                 content=ft.Row(
-                    [ft.Icon(ft.Icons.LOGOUT), ft.Text("Logout")], spacing=12
+                    [
+                        ft.Icon(ft.Icons.LOGOUT, color=ft.Colors.RED),
+                        ft.Text("Logout", color=ft.Colors.RED),
+                    ],
+                    spacing=12,
                 ),
                 on_click=_logout,
             ),

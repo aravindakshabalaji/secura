@@ -80,6 +80,12 @@ def IconTextButton(page: ft.Page, text: str, icon, on_click=None) -> ft.TextButt
     )
 
 
+def TextField(*args, **kwargs) -> ft.TextField:
+    return ft.TextField(
+        *args, **kwargs, text_style=ft.TextStyle(font_family="JetBrains Mono")
+    )
+
+
 def toolbar_back(page: ft.Page, title: str, route: str) -> ft.Row:
     return ft.Row(
         [

@@ -5,7 +5,7 @@ import flet as ft
 from pycrypt.symmetric import AES_CBC, AES_CTR, AES_ECB, AES_GCM
 
 from crypto.base_view import BaseView
-from ui.components import IconButton, PrimaryButton, TonalButton
+from ui.components import IconButton, PrimaryButton, TonalButton, TextField
 from ui.theme import GAP_MD, section_title
 
 
@@ -77,7 +77,7 @@ class AESEncryptDecrypt(BaseView):
 
         key_field = self._key_field("Key (hex)", "32/48/64 characters", "AES key")
 
-        iv_field = ft.TextField(
+        iv_field = TextField(
             prefix_icon=ft.Icons.TAG,
             label="IV (hex)",
             hint_text="32 characters",
@@ -85,11 +85,11 @@ class AESEncryptDecrypt(BaseView):
             visible=False,
         )
 
-        nonce_field = ft.TextField(
+        nonce_field = TextField(
             prefix_icon=ft.Icons.TAG, label="Nonce (hex)", width=420, visible=False
         )
 
-        aad_field = ft.TextField(
+        aad_field = TextField(
             prefix_icon=ft.Icons.STORAGE,
             label="AAD (hex)",
             hint_text="Optional for GCM",
@@ -98,7 +98,7 @@ class AESEncryptDecrypt(BaseView):
         )
         aad_field.suffix = self._paste_button(aad_field)
 
-        tag_field = ft.TextField(
+        tag_field = TextField(
             prefix_icon=ft.Icons.LOCAL_OFFER,
             label="Tag (hex)",
             hint_text="32 characters - required for GCM decrypt",
@@ -145,7 +145,7 @@ class AESEncryptDecrypt(BaseView):
             tight=True,
         )
 
-        input_field = ft.TextField(
+        input_field = TextField(
             prefix_icon=ft.Icons.INPUT,
             label="Input",
             hint_text="Plaintext for encrypt / Ciphertext hex for decrypt",
@@ -155,7 +155,7 @@ class AESEncryptDecrypt(BaseView):
         )
         input_field.suffix = self._paste_button(input_field)
 
-        output_field = ft.TextField(
+        output_field = TextField(
             prefix_icon=ft.Icons.OUTPUT,
             label="Output",
             multiline=True,

@@ -12,6 +12,10 @@ def main(page: ft.Page):
     page.window_min_width = 900
     page.window_min_height = 600
 
+    page.fonts = {
+        "Inter": "/fonts/Inter.ttc",
+        "JetBrains Mono": "/fonts/JetBrainsMono-Regular.ttf"
+    }
     page.theme_mode = (
         ft.ThemeMode.LIGHT
         if page.client_storage.get("secura.light_mode")
