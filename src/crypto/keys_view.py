@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Copyright (c) 2025 Aravindaksha Balaji
+# Copyright (C) 2025 Aravindaksha Balaji
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -637,10 +637,10 @@ class KeyManagement(BaseView):
             if params is None:
                 prog.visible = False
                 self.page.update()
-                if _clean_hex(p_field.value):
-                    g_field.error_text = "Invalid generator hex"
-                elif _clean_hex(g_field.value):
+                if not _parse_hex_to_int(p_field.value):
                     p_field.error_text = "Invalid prime hex"
+                elif not _parse_hex_to_int(g_field.value):
+                    g_field.error_text = "Invalid generator hex"
                 else:
                     p_field.error_text = "No parameters present"
                 self.page.update()
@@ -661,8 +661,18 @@ class KeyManagement(BaseView):
                 prog.visible = False
                 self.page.update()
 
-        p_field.suffix = IconButton(self.page, ft.Icons.SYNC, on_click=generate_params)
-        g_field.suffix = IconButton(self.page, ft.Icons.SYNC, on_click=generate_params)
+        p_field.suffix = IconButton(
+            self.page,
+            ft.Icons.SYNC,
+            on_click=generate_params,
+            tooltip="Generate DH parameters",
+        )
+        g_field.suffix = IconButton(
+            self.page,
+            ft.Icons.SYNC,
+            on_click=generate_params,
+            tooltip="Generate DH parameters",
+        )
 
         def save_dh(_):
             if not pub_field.value or not priv_field.value or not self.conn:

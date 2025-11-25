@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Copyright (c) 2025 Aravindaksha Balaji
+# Copyright (C) 2025 Aravindaksha Balaji
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -133,7 +133,7 @@ class BaseView:
             icon,
             tooltip=f"Copy {valuename}",
             on_click=lambda _: self._copy_field(value)
-            if isinstance(value, TextField)
+            if isinstance(value, ft.TextField)
             else self._copy(value),
         )
 

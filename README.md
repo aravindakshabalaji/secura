@@ -1,6 +1,8 @@
-# 🔐 Secura: Modern Cryptographic Tools Suite
+# Secura: Modern Cryptographic Tools Suite
 
 Secura is a cross-platform cryptographic suite providing **AES**, **RSA**, **Diffie-Hellman**, **Hashing**, and **Key Management** utilities through a clean, modern UI. It is designed for learning and experimentation with cryptographic primitives.
+
+Secura is powered by [pycrypt](https://pypi.org/project/pycrypt-lib/).
 
 ---
 
@@ -27,7 +29,7 @@ Secura is a cross-platform cryptographic suite providing **AES**, **RSA**, **Dif
   - Hashing for text and file data
   - Hash based functions (HMAC, HKDF)
 
-- **Key Management (import/export)**
+- **Key Management**
   - Key generation, secure storage for AES, RSA, and DH
 
 ### **Modern UI / UX**
@@ -40,13 +42,18 @@ Secura is a cross-platform cryptographic suite providing **AES**, **RSA**, **Dif
 Secura runs as **desktop**, **mobile**, or a **web** app using Flet.
 
 ### Option 1: Download pre-built binaries
-You can download signed, pre-built binaries from the [Releases](https://github.com/aravindakshabalaji/secura/releases) page:
+
+You can download signed, pre-built binaries from the [GitHub Releases](https://github.com/aravindakshabalaji/secura/releases) page:
 
 - Windows — .msi installer
 - macOS — .dmg bundle
 - Android — .apk package
 
+> ⚠️ **Note:**
+> Only a portable build is available for Linux
+
 ### Option 2: Run from source
+
 #### Using `uv`
 
 Desktop:
@@ -81,8 +88,6 @@ Web:
 poetry run flet run --web
 ```
 
----
-
 ## 📦 Build Targets
 
 ### Windows / Linux / macOS
@@ -109,7 +114,6 @@ flet build ipa -v      # iOS
 - This software is for **education and experimentation** only.
 - It should **not** be used for production-grade security systems.
 
----
 
 ## 📄 License
 

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Copyright (c) 2025 Aravindaksha Balaji
+# Copyright (C) 2025 Aravindaksha Balaji
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ import flet as ft
 from pycrypt.symmetric import AES_CBC, AES_CTR, AES_ECB, AES_GCM
 
 from crypto.base_view import BaseView
-from ui.components import IconButton, PrimaryButton, TonalButton, TextField
+from ui.components import IconButton, PrimaryButton, TextField, TonalButton
 from ui.theme import GAP_MD, section_title
 
 
@@ -81,6 +81,11 @@ class AESEncryptDecrypt(BaseView):
 
     # ---------- Text mode ----------
     def _text_mode(self):
+        class TextFieldError(Exception):
+            """Raised when the text field contains invalid data"""
+
+            pass
+
         mode_dd = ft.Dropdown(
             label="Mode",
             options=[
@@ -230,19 +235,19 @@ class AESEncryptDecrypt(BaseView):
             if not field.value and required:
                 field.error_text = "Required field"
                 self.page.update()
-                return
+                raise TextFieldError
 
             try:
                 value = bytes.fromhex(field.value.strip())
             except Exception:
                 field.error_text = "Field must contain valid hex"
                 self.page.update()
-                return
+                raise TextFieldError
 
             if value_len and len(value) != value_len:
                 field.error_text = f"Field value must be {value_len * 2} characters"
                 self.page.update()
-                return
+                raise TextFieldError
 
             return value
 
@@ -302,6 +307,8 @@ class AESEncryptDecrypt(BaseView):
                     tag_field.value = tag.hex().upper()
                 else:
                     output_field.value = "Unsupported mode"
+            except TextFieldError:
+                pass
             except Exception as err:
                 output_field.value = f"Error: {err}"
 
@@ -366,11 +373,15 @@ class AESEncryptDecrypt(BaseView):
                         return
 
                     nonce = error_check_field(nonce_field, 12)
-                    tag = bytes.fromhex(tag_field.value.strip())
+                    tag = error_check_field(tag_field, 16)
                     aad = error_check_field(aad_field, required=False)
                     c = AES_GCM(key)
-                    pt = c.decrypt(ct_bytes, nonce=nonce, tag=tag, aad=aad)
-                    output_field.value = pt.decode(errors="replace")
+                    try:
+                        pt = c.decrypt(ct_bytes, nonce=nonce, tag=tag, aad=aad)
+                    except AES_GCM.GCMAuthenticationError:
+                        tag_field.error_text = "Authentication failed: Invalid GCM tag"
+                    else:
+                        output_field.value = pt.decode(errors="replace")
                 else:
                     output_field.value = "Unsupported mode"
             except Exception as err:

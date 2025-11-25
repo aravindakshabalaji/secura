@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Copyright (c) 2025 Aravindaksha Balaji
+# Copyright (C) 2025 Aravindaksha Balaji
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
 from secrets import token_hex
 
 import flet as ft
-from pycrypt.asymmetric import DHPublicKey
 
 from crypto.base_view import BaseView
 from ui.components import IconButton, PrimaryButton, TextField, vertical_scroll
@@ -98,19 +97,6 @@ class DHEncryptDecrypt(BaseView):
         )
         derived_key_field.suffix = self._copy_button(derived_key_field, "derived")
 
-        def import_peer_public(raw: str):
-            r = (raw or "").strip()
-            try:
-                peer_pub = DHPublicKey.import_key(r)
-                return peer_pub
-            except Exception:
-                try:
-                    b = bytes.fromhex(r)
-                    peer_pub = DHPublicKey.from_bytes(b)
-                    return peer_pub
-                except Exception as e:
-                    pub_key_field.error_text = f"Unable to parse peer public key: {e}"
-
         def exchange_click(_):
             self._clear_errors(priv_key_field, pub_key_field, derived_key_field)
             derived_key_field.value = ""
@@ -125,9 +111,12 @@ class DHEncryptDecrypt(BaseView):
                 return
 
             try:
-                peer_pub = import_peer_public(pub_key_field.value)
+                peer_pub = None
+                from pycrypt.asymmetric import DHPublicKey
+
+                peer_pub = DHPublicKey.import_key(pub_key_field.value.strip())
             except Exception as e:
-                pub_key_field.error_text = str(e)
+                pub_key_field.error_text = f"Invalid public key: {e}"
                 self.page.update()
                 return
 

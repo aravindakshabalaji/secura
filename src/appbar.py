@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Copyright (c) 2025 Aravindaksha Balaji
+# Copyright (C) 2025 Aravindaksha Balaji
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,30 @@
 
 import flet as ft
 
-from ui.components import TonalButton
+from ui.components import TonalButton, vertical_scroll
+
+APP_NAME = "Secura"
+APP_VERSION = "1.0.0"
+DEVELOPER = "Aravindaksha Balaji"
+GITHUB_URL = "https://github.com/aravindakshabalaji/secura"
+PYCRYPT_LIB_URL = "https://pypi.org/project/pycrypt-lib/"
+GPL_URL = "https://www.gnu.org/licenses/gpl-3.0.en.html"
+COPYRIGHT = (
+    "Copyright (C) 2025 Aravindaksha Balaji\n"
+    "\n"
+    "This program is free software: you can redistribute it and/or modify\n"
+    "it under the terms of the GNU General Public License as published by\n"
+    "the Free Software Foundation, either version 3 of the License, or\n"
+    "(at your option) any later version.\n"
+    "\n"
+    "This program is distributed in the hope that it will be useful,\n"
+    "but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
+    "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the\n"
+    "GNU General Public License for more details.\n"
+    "\n"
+    "You should have received a copy of the GNU General Public License\n"
+    "along with this program. If not, see <https://www.gnu.org/licenses/>.\n"
+)
 
 
 def build_appbar(page: ft.Page, toggle_theme):
@@ -34,13 +57,81 @@ def build_appbar(page: ft.Page, toggle_theme):
                 border_radius=8,
                 margin=ft.margin.only(left=10),
             ),
-            ft.Text("Secura", weight=ft.FontWeight.W_700, size=16),
+            ft.Text(APP_NAME, weight=ft.FontWeight.W_700, size=16),
         ],
         spacing=10,
         alignment=ft.MainAxisAlignment.CENTER,
     )
 
     actions = []
+
+    def _open_about(_):
+        def close_dlg(_):
+            dlg.open = False
+            page.update()
+
+        content_col = ft.Column(
+            [
+                ft.Text(APP_NAME, size=18, weight=ft.FontWeight.W_700),
+                ft.Text(
+                    f"Version: {APP_VERSION}", size=12, color=ft.ColorScheme.secondary
+                ),
+                ft.Text(
+                    f"Developer: {DEVELOPER}", size=12, color=ft.ColorScheme.secondary
+                ),
+                ft.Divider(),
+                ft.Text("Source Code Repository", weight=ft.FontWeight.W_600),
+                ft.TextButton(
+                    "Open in GitHub", on_click=lambda e: page.launch_url(GITHUB_URL)
+                ),
+                ft.Divider(),
+                ft.Text("Powered By", weight=ft.FontWeight.W_600),
+                ft.Row(
+                    [
+                        ft.Text("pycrypt by Aravindaksha Balaji"),
+                        ft.TextButton(
+                            "Open in PyPI",
+                            on_click=lambda e: page.launch_url(PYCRYPT_LIB_URL),
+                        ),
+                    ],
+                    wrap=True,
+                    spacing=8,
+                ),
+                ft.Divider(),
+                ft.Text("License", weight=ft.FontWeight.W_600),
+                ft.TextButton(
+                    "GPL-3.0-or-later",
+                    on_click=lambda e: page.launch_url(GPL_URL),
+                ),
+                ft.Divider(),
+                ft.Text("Copyright & Warranty", weight=ft.FontWeight.W_600),
+                ft.Text(COPYRIGHT, size=11),
+            ],
+            spacing=10,
+            tight=True,
+            width=800,
+        )
+
+        dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("About the app"),
+            content=vertical_scroll(content_col),
+            actions=[
+                TonalButton(page, "Close", ft.Icons.CLOSE, close_dlg),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
+        page.open(dlg)
+        page.update()
+
+    actions.append(
+        ft.IconButton(
+            ft.Icons.INFO_OUTLINED,
+            tooltip="About the app",
+            on_click=_open_about,
+        )
+    )
 
     actions.append(
         ft.IconButton(
@@ -57,9 +148,11 @@ def build_appbar(page: ft.Page, toggle_theme):
             [
                 ft.CircleAvatar(
                     content=ft.Text(
-                        page.username[0].upper(), weight=ft.FontWeight.W_700
+                        (page.username or "U")[0].upper(), weight=ft.FontWeight.W_700
                     ),
-                    foreground_image_src=f"https://github.com/identicons/{page.username}.png",
+                    foreground_image_src=f"https://github.com/identicons/{page.username}.png"
+                    if page.username
+                    else None,
                 )
             ]
         ),
@@ -86,14 +179,17 @@ def build_appbar(page: ft.Page, toggle_theme):
                     [
                         ft.CircleAvatar(
                             content=ft.Text(
-                                page.username[0].upper(), weight=ft.FontWeight.W_700
+                                (page.username or "U")[0].upper(),
+                                weight=ft.FontWeight.W_700,
                             ),
-                            foreground_image_src=f"https://github.com/identicons/{page.username}.png",
+                            foreground_image_src=f"https://github.com/identicons/{page.username}.png"
+                            if page.username
+                            else None,
                             width=100,
                             height=100,
                         ),
                         ft.Divider(),
-                        ft.Text(value=f"Welcome, {page.username}!"),
+                        ft.Text(value=f"Welcome, {page.username or 'User'}!"),
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -121,7 +217,7 @@ def build_appbar(page: ft.Page, toggle_theme):
             ),
             ft.PopupMenuItem(
                 content=ft.Row(
-                    [ft.Icon(ft.Icons.PERSON), ft.Text("View profile")], spacing=12
+                    [ft.Icon(ft.Icons.PERSON), ft.Text("View Profile")], spacing=12
                 ),
                 on_click=_profile,
             ),
