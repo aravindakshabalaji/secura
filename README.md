@@ -88,7 +88,7 @@ Web:
 poetry run flet run --web
 ```
 
-## 📦 Build Targets
+## Build Targets
 
 ### Windows / Linux / macOS
 
@@ -109,13 +109,13 @@ flet build ipa -v      # iOS
 
 ---
 
-## 🛡 Security Notes
+## Security Notes
 
 - This software is for **education and experimentation** only.
 - It should **not** be used for production-grade security systems.
 
 
-## 📄 License
+## License
 
 Secura is licensed under the **GNU GPL-3.0-or-later**.
 
