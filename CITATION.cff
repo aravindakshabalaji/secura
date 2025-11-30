@@ -1,0 +1,22 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Secura
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Aravindaksha Balaji
+    email: aravindakshabalaji@gmail.com
+repository-code: 'https://github.com/aravindakshabalaji/secura'
+repository-artifact: 'https://github.com/aravindakshabalaji/secura/releases'
+abstract: >-
+  An educational desktop & mobile crypto toolkit application
+  written in Python + Flet.
+keywords:
+  - python
+  - cryptography
+  - toolkit
+license: GPL-3.0-or-later
